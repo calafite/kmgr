@@ -1,7 +1,8 @@
 use anyhow::Result;
+use futures::StreamExt;
 use reqwest::Client;
-use sha1::{Digest, Sha1};
-use sha2::Sha512;
+use sha1::{Digest as _, Sha1};
+use sha2::{Digest as _, Sha512};
 use std::path::Path;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
@@ -18,7 +19,7 @@ impl Downloader {
         }
     }
 
-    /// Downloads a file from a URL to a local path, optionally verifying its hash.
+    /// Downloads a file from a URL to a local path, streaming chunks and verifying its hash on the fly.
     pub async fn download_file<P: AsRef<Path>>(
         &self,
         url: &str,
@@ -26,27 +27,45 @@ impl Downloader {
         expected_hash: Option<&str>,
     ) -> Result<()> {
         let response = self.client.get(url).send().await?.error_for_status()?;
-        let bytes = response.bytes().await?;
+        let mut stream = response.bytes_stream();
+        let mut file = File::create(&output_path).await?;
+
+        // Initialize hashers only if a verification is requested
+        let is_sha1 = expected_hash.map_or(false, |h| h.len() == 40);
+        let mut sha1_hasher = Sha1::new();
+        let mut sha512_hasher = Sha512::new();
+
+        while let Some(chunk_result) = stream.next().await {
+            let chunk = chunk_result?;
+            file.write_all(&chunk).await?;
+
+            if expected_hash.is_some() {
+                if is_sha1 {
+                    sha1_hasher.update(&chunk);
+                } else {
+                    sha512_hasher.update(&chunk);
+                }
+            }
+        }
+
+        // Ensure all bytes are written to the physical storage
+        file.flush().await?;
 
         if let Some(expected) = expected_hash {
-            let is_sha1 = expected.len() == 40;
             let actual_hex = if is_sha1 {
-                let mut hasher = Sha1::new();
-                hasher.update(&bytes);
-                hex::encode(hasher.finalize())
+                hex::encode(sha1_hasher.finalize())
             } else {
-                let mut hasher = Sha512::new();
-                hasher.update(&bytes);
-                hex::encode(hasher.finalize())
+                hex::encode(sha512_hasher.finalize())
             };
 
             if actual_hex != expected {
+                // Release the file handle and clean up the corrupted artifact
+                drop(file);
+                let _ = tokio::fs::remove_file(&output_path).await;
                 anyhow::bail!("Hash mismatch! Expected: {}, got: {}", expected, actual_hex);
             }
         }
 
-        let mut file = File::create(output_path).await?;
-        file.write_all(&bytes).await?;
         Ok(())
     }
 }
