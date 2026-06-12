@@ -1,16 +1,15 @@
 # kmgr
 
-`kmgr` is a high-performance, lightweight, and robust Command-Line Minecraft Mod Manager written in Rust. Designed to streamline modpack development, search, installation, and deployment, `kmgr` eliminates the overhead of typical mod management, offering surgical control over dependencies, active configurations, and environment profiles.
+`kmgr` is a performant, lightweight, and robust CLI Minecraft Mod Manager written in Rust. Designed to facilitate search, installation, and deployment.
 
 ---
 
-## Key Features
+## Features
 
 - **Concurrent Resolver**: Resolves and queries platform metadata concurrently (using `tokio` and `futures`), offering lightning-fast update checks.
 - **Profiles Management**: Creates, switches, renames, and manages arbitrary mod sets (profiles) with zero manual file duplication. Switching profiles will seamlessly enable or disable physical disk artifacts.
 - **Integrity & Checksums**: Downloads are validated against cryptographic checksum signatures (`SHA-1` or `SHA-512`). Syncing scans current file structures and re-downloads mismatching or corrupted assets on the fly.
 - **Dependency Isolation**: Distinguishes between explicitly-requested mods and dependency-chained mods.
-- **Pruner Engine**: Scans mod dependencies recursively, cleaning out unused downstream components that no longer trace back to any explicit root packages.
 
 ---
 
@@ -27,15 +26,15 @@
 This file defines global settings, profiles, and active configurations. It can be modified manually or built via the interactive `setup` wizard.
 
 ```toml
-default_mc_version = "1.20.4"
+default_mc_version = "26.1"
 mod_loader = "fabric"
-mods_folder = "mods"
-active_profile = "solo-exploration"
+mods_folder = "/home/walt/.mods"
+active_profile = "chiappetta-server"
 
 [profiles]
 default = []
-solo-exploration = ["sodium", "iris", "lithium"]
-server-coop = ["sodium", "voicechat"]
+chiappetta-server = ["sodium", "iris", "lithium"]
+something-else = ["sodium", "voicechat"]
 ```
 
 ### 2. `kmgr.lock`
@@ -83,14 +82,14 @@ kmgr setup
 
 **Validation & Safe Normalization Logic**:
 - **Minecraft Version**: Rejects empty strings, validates alphanumeric syntax, ensures numbers are present, and normalizes version string to lowercase.
-- **Mod Loader**: Restriced to validated, compatible loaders (`fabric`, `forge`, `neoforge`, `quilt`).
+- **Mod Loader**: Restriced to validated, compatible loaders (`fabric`, `forge`, `neoforge`, `quilt`); let me know if you want any loaders added or add them yourself.
 - **Mods Folder**: Validates paths to prevent dangerous characters (e.g. `*`, `?`, `"`, `<`), normalizes directory-slashes (converting Windows backslashes `\` to Unix forward slashes `/`), strips trailing slashes, and safely initializes directory trees.
 
 ### 2. Manual CLI Initialization
 For immediate zero-interaction setups, initialize the workspace configuration specifying standard version and loader details directly:
 
 ```bash
-kmgr init --mc-version 1.20.4 --loader fabric
+kmgr init --mc-version 1.21.11 --loader fabric
 ```
 
 ---
