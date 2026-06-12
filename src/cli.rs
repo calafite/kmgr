@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "kmgr")]
-#[command(author, version, about = "A fast, lightweight Minecraft CLI Mod Manager written in Rust", long_about = None)]
+#[command(author, version, about = " | A fast, lightweight Minecraft CLI Mod Manager written in Rust", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -39,7 +39,7 @@ pub enum Commands {
         /// Names or Slugs of the mods
         #[arg(required = true)]
         mods: Vec<String>,
-        
+
         /// Minecraft version (e.g., 1.20.1) - Optional
         #[arg(short, long)]
         mc_version: Option<String>,
