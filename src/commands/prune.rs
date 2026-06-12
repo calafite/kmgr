@@ -51,11 +51,11 @@ pub async fn do_cmd() -> Result<()> {
     }
 
     if to_remove.is_empty() {
-        println!("{} No orphaned dependencies to remove.", "::".cyan().bold());
+        println!("{} No orphaned dependencies to remove.", "".cyan().bold());
         return Ok(());
     }
 
-    println!("{} Removing {} orphaned dependencies...\n", "::".cyan().bold(), to_remove.len().to_string().yellow());
+    println!("{} Removing {} orphaned dependencies...\n", "".cyan().bold(), to_remove.len().to_string().yellow());
 
     let mut removed_count = 0;
     for (id, filename, name) in to_remove {

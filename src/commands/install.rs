@@ -22,7 +22,7 @@ pub async fn do_cmd(mod_name: String, mc_version: Option<String>, source_opt: Op
         None => registry.get_default()?,
     };
     
-    println!("{} Installing {} for Minecraft {} (Source: {})\n", "::".cyan().bold(), mod_name.green(), version_str.yellow(), provider.display_name().magenta());
+    println!("{} Installing {} for Minecraft {} (Source: {})\n", "".cyan().bold(), mod_name.green(), version_str.yellow(), provider.display_name().magenta());
     
     if !Path::new(&state.mods_folder).exists() {
         fs::create_dir_all(&state.mods_folder).await?;
@@ -110,7 +110,7 @@ pub async fn do_cmd(mod_name: String, mc_version: Option<String>, source_opt: Op
             }
             
             state.save().await?;
-            println!("\n{} Installation complete.", "::".green().bold());
+            println!("\n{} Installation complete.", "".green().bold());
         }
         Err(e) => {
             eprintln!("{} Dependency resolution failed: {}", "Error:".red().bold(), e);

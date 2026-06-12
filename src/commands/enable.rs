@@ -24,7 +24,7 @@ pub async fn do_cmd(mod_name: String) -> Result<()> {
         if was_enabled {
             println!(
                 "{} Mod '{}' is already enabled.",
-                "::".cyan().bold(),
+                "".cyan().bold(),
                 mod_name.green()
             );
             return Ok(());
