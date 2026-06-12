@@ -7,6 +7,7 @@ use std::path::Path;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
+/// A utility for downloading files from remote URLs with streaming and hash verification.
 pub struct Downloader {
     client: Client,
 }
@@ -30,7 +31,6 @@ impl Downloader {
         let mut stream = response.bytes_stream();
         let mut file = File::create(&output_path).await?;
 
-        // Initialize hashers only if a verification is requested
         let is_sha1 = expected_hash.map_or(false, |h| h.len() == 40);
         let mut sha1_hasher = Sha1::new();
         let mut sha512_hasher = Sha512::new();
@@ -48,7 +48,6 @@ impl Downloader {
             }
         }
 
-        // Ensure all bytes are written to the physical storage
         file.flush().await?;
 
         if let Some(expected) = expected_hash {
@@ -59,7 +58,6 @@ impl Downloader {
             };
 
             if actual_hex != expected {
-                // Release the file handle and clean up the corrupted artifact
                 drop(file);
                 let _ = tokio::fs::remove_file(&output_path).await;
                 anyhow::bail!("Hash mismatch! Expected: {}, got: {}", expected, actual_hex);
