@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use tokio::fs;
 
 #[derive(Debug)]
@@ -8,8 +8,8 @@ pub struct KmgrState {
     pub default_mc_version: String,
     pub mod_loader: String,
     pub mods_folder: String,
-    pub installed_mods: HashMap<String, InstalledMod>,
-    pub profiles: HashMap<String, Vec<String>>,
+    pub installed_mods: BTreeMap<String, InstalledMod>,
+    pub profiles: BTreeMap<String, Vec<String>>,
     pub active_profile: String,
 }
 
@@ -22,7 +22,7 @@ struct ConfigDto {
     #[serde(default = "default_mods_folder_str")]
     mods_folder: String,
     #[serde(default = "default_profiles")]
-    profiles: HashMap<String, Vec<String>>,
+    profiles: BTreeMap<String, Vec<String>>,
     #[serde(default = "default_active_profile")]
     active_profile: String,
 }
@@ -43,7 +43,7 @@ impl Default for ConfigDto {
 #[derive(Serialize, Deserialize, Default)]
 struct LockDto {
     #[serde(default)]
-    installed_mods: HashMap<String, InstalledMod>,
+    installed_mods: BTreeMap<String, InstalledMod>,
 }
 
 impl Default for KmgrState {
@@ -53,7 +53,7 @@ impl Default for KmgrState {
             default_mc_version: default_mc_version_str(),
             mod_loader: default_mod_loader_str(),
             mods_folder: default_mods_folder_str(),
-            installed_mods: HashMap::new(),
+            installed_mods: BTreeMap::new(),
             profiles: default_profiles(),
             active_profile: default_active_profile(),
         }
@@ -86,8 +86,8 @@ fn default_empty_vec() -> Vec<String> {
 }
 
 /// Returns a default profiles map containing only the "default" profile.
-fn default_profiles() -> HashMap<String, Vec<String>> {
-    let mut m = HashMap::new();
+fn default_profiles() -> BTreeMap<String, Vec<String>> {
+    let mut m = BTreeMap::new();
     m.insert("default".to_string(), Vec::new());
     m
 }
