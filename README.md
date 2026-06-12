@@ -22,6 +22,8 @@
 └── kmgr.lock       # Cryptographically validated package tracking database
 ```
 
+In name of versatility, `kmgr` must be used exclusively within the setup's directory to ensure compatibility with multiple setups.
+
 ### 1. `kmgr.toml`
 This file defines global settings, profiles, and active configurations. It can be modified manually or built via the interactive `setup` wizard.
 
