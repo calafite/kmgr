@@ -19,6 +19,7 @@ pub struct SfProject {
 }
 
 impl SourceForgeClient {
+    /// Creates a new instance of the SourceForge API client.
     pub fn new() -> Self {
         SourceForgeClient {
             client: Client::builder().build().unwrap(),
@@ -26,6 +27,7 @@ impl SourceForgeClient {
         }
     }
 
+    /// Retrieves project details from SourceForge using its project name.
     pub async fn get_project(&self, project_name: &str) -> Result<SfProject> {
         let url = format!("{}/{}", self.base_url, project_name);
         
@@ -38,6 +40,7 @@ impl SourceForgeClient {
         Ok(response.error_for_status()?.json().await?)
     }
     
+    /// Generates the latest download URL for a given SourceForge project.
     pub fn get_latest_download_url(&self, project_name: &str) -> String {
         format!("https://sourceforge.net/projects/{}/files/latest/download", project_name)
     }
@@ -45,9 +48,13 @@ impl SourceForgeClient {
 
 #[async_trait]
 impl ModProvider for SourceForgeClient {
+    /// Returns the unique identifier for the SourceForge provider.
     fn id(&self) -> &'static str { "sourceforge" }
+
+    /// Returns the display name of the SourceForge provider.
     fn display_name(&self) -> &'static str { "SourceForge" }
     
+    /// Searches for projects on SourceForge matching the query.
     async fn search(&self, query: &str) -> Result<Vec<ProviderSearchResult>> {
         match self.get_project(query).await {
             Ok(p) => {
@@ -61,11 +68,12 @@ impl ModProvider for SourceForgeClient {
                 Ok(results)
             }
             Err(_) => {
-                Ok(vec![]) // Not found
+                Ok(vec![])
             }
         }
     }
 
+    /// Resolves a project to its latest download target.
     async fn resolve(&self, project_name: &str, _mc_version: &str, _loader: &str) -> Result<Vec<ResolvedTarget>> {
         let _project = self.get_project(project_name).await?;
         

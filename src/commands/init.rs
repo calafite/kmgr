@@ -24,4 +24,3 @@ pub async fn do_cmd(mc_version: String, loader: String) -> Result<()> {
     println!("\n{} {}", "=>".cyan().bold(), "Ready.".bright_black());
     Ok(())
 }
-

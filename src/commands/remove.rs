@@ -40,4 +40,3 @@ pub async fn do_cmd(mod_name: String) -> Result<()> {
 
     Ok(())
 }
-

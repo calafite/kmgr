@@ -11,12 +11,14 @@ pub struct Downloader {
 }
 
 impl Downloader {
+    /// Creates a new instance of the Downloader.
     pub fn new() -> Self {
         Self {
             client: Client::new(),
         }
     }
 
+    /// Downloads a file from a URL to a local path, optionally verifying its hash.
     pub async fn download_file<P: AsRef<Path>>(
         &self,
         url: &str,

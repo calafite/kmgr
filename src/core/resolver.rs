@@ -10,6 +10,7 @@ pub struct DependencyResolver {
 }
 
 impl DependencyResolver {
+    /// Creates a new DependencyResolver.
     pub fn new() -> Self {
         Self {
             modrinth: ModrinthClient::new(),
@@ -23,7 +24,7 @@ impl DependencyResolver {
         project_slug: &str,
         mc_version: &str,
     ) -> Result<Vec<Version>> {
-        let mut resolved_versions: HashMap<String, Version> = HashMap::new(); // project_id -> Version
+        let mut resolved_versions: HashMap<String, Version> = HashMap::new();
         let mut queue: Vec<String> = vec![project_slug.to_string()];
         let mut seen_projects: HashSet<String> = HashSet::new();
 
@@ -39,7 +40,6 @@ impl DependencyResolver {
                 continue;
             }
 
-            // 1. Resolve project info
             let project = match self.modrinth.get_project(&current_req).await {
                 Ok(p) => p,
                 Err(e) => {
@@ -51,15 +51,12 @@ impl DependencyResolver {
             seen_projects.insert(project.id.clone());
             seen_projects.insert(project.slug.clone());
 
-            // 2. Resolve target version for MC version
             let mut versions = self.modrinth.get_versions(&project.id, mc_version).await?;
 
             if let Some(target_version) = versions.pop() {
-                // Get latest compatible version
                 let v_str = format!("v{}", target_version.version_number).bright_black();
                 println!("   {} {} {}", "✔".green(), project.title.cyan(), v_str);
 
-                // 3. Process dependencies
                 for dep in &target_version.dependencies {
                     if dep.dependency_type == "required" {
                         if let Some(dep_proj_id) = &dep.project_id {
@@ -67,7 +64,6 @@ impl DependencyResolver {
                                 queue.push(dep_proj_id.clone());
                             }
                         } else if let Some(dep_version_id) = &dep.version_id {
-                            // Rare edge case: Modrinth hard-links a specific version but no project_id
                             if let Ok(v) = self.modrinth.get_version(dep_version_id).await {
                                 queue.push(v.project_id.clone());
                             }

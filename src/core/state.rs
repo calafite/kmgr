@@ -28,6 +28,7 @@ struct ConfigDto {
 }
 
 impl Default for ConfigDto {
+    /// Returns the default configuration DTO.
     fn default() -> Self {
         Self {
             default_mc_version: default_mc_version_str(),
@@ -46,6 +47,7 @@ struct LockDto {
 }
 
 impl Default for KmgrState {
+    /// Returns the default application state.
     fn default() -> Self {
         Self {
             default_mc_version: default_mc_version_str(),
@@ -58,26 +60,39 @@ impl Default for KmgrState {
     }
 }
 
+/// Returns an empty string as the default Minecraft version.
 fn default_mc_version_str() -> String {
     "".to_string()
 }
+
+/// Returns an empty string as the default mod loader.
 fn default_mod_loader_str() -> String {
     "".to_string()
 }
+
+/// Returns "mods" as the default mods folder path.
 fn default_mods_folder_str() -> String {
     "mods".to_string()
 }
+
+/// Returns true as a default boolean value.
 fn default_true() -> bool {
     true
 }
+
+/// Returns an empty vector of strings.
 fn default_empty_vec() -> Vec<String> {
     Vec::new()
 }
+
+/// Returns a default profiles map containing only the "default" profile.
 fn default_profiles() -> HashMap<String, Vec<String>> {
     let mut m = HashMap::new();
     m.insert("default".to_string(), Vec::new());
     m
 }
+
+/// Returns "default" as the default active profile name.
 fn default_active_profile() -> String {
     "default".to_string()
 }
@@ -99,6 +114,7 @@ pub struct InstalledMod {
     pub enabled: bool,
 }
 
+/// Returns an empty string.
 fn default_empty_string() -> String {
     "".to_string()
 }
@@ -181,21 +197,18 @@ impl KmgrState {
     pub fn find_mod_id_fuzzy(&self, query: &str) -> Option<(String, String)> {
         let q = query.to_lowercase();
 
-        // 1. Exact
         for (id, m) in &self.installed_mods {
             if id == query || m.name == query {
                 return Some((id.clone(), m.name.clone()));
             }
         }
 
-        // 2. Case-insensitive exact
         for (id, m) in &self.installed_mods {
             if id.to_lowercase() == q || m.name.to_lowercase() == q {
                 return Some((id.clone(), m.name.clone()));
             }
         }
 
-        // 3. Substring / edit-distance — pick highest scoring candidate
         let mut best: Option<(String, String, f64)> = None;
 
         for (id, m) in &self.installed_mods {
@@ -257,6 +270,7 @@ impl KmgrState {
     }
 }
 
+/// Writes content to a file atomically by writing to a temporary file first and then renaming it.
 async fn atomic_write(path: &str, content: &str) -> Result<()> {
     let tmp_path = format!("{}.tmp", path);
     fs::write(&tmp_path, content).await?;
@@ -264,6 +278,7 @@ async fn atomic_write(path: &str, content: &str) -> Result<()> {
     Ok(())
 }
 
+/// Computes the Levenshtein distance between two strings.
 fn levenshtein(a: &str, b: &str) -> usize {
     let a: Vec<char> = a.chars().collect();
     let b: Vec<char> = b.chars().collect();
@@ -287,6 +302,7 @@ fn levenshtein(a: &str, b: &str) -> usize {
     dp[m][n]
 }
 
+/// Computes a fuzzy similarity score between 0.0 and 1.0 for two strings.
 fn fuzzy_similarity(a: &str, b: &str) -> f64 {
     let max_len = a.len().max(b.len());
     if max_len == 0 {

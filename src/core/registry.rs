@@ -7,17 +7,20 @@ pub struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
+    /// Creates a new empty ProviderRegistry.
     pub fn new() -> Self {
         Self {
             providers: HashMap::new(),
         }
     }
 
+    /// Registers a new provider in the registry.
     pub fn register(&mut self, provider: Box<dyn ModProvider>) {
         self.providers
             .insert(provider.id().to_lowercase(), provider);
     }
 
+    /// Retrieves a provider by its identifier.
     pub fn get(&self, id: &str) -> Result<&dyn ModProvider> {
         let mut key = id.to_lowercase();
         if key == "sf" {
@@ -30,6 +33,7 @@ impl ProviderRegistry {
             .ok_or_else(|| anyhow!("Provider '{}' not found", id))
     }
 
+    /// Retrieves the default provider (Modrinth).
     pub fn get_default(&self) -> Result<&dyn ModProvider> {
         self.get("modrinth")
     }
