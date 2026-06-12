@@ -1,8 +1,8 @@
 use anyhow::Result;
 use futures::StreamExt;
 use reqwest::Client;
-use sha1::{Digest as _, Sha1};
-use sha2::{Digest as _, Sha512};
+use sha1::Sha1;
+use sha2::{Digest, Sha512};
 use std::path::Path;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;

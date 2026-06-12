@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "*", features = ["derive"] }
-reqwest = { version = "*", features = ["json"] }
+reqwest = { version = "*", features = ["json", "stream"] }
 tokio = { version = "*", features = ["full"] }
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"

@@ -28,8 +28,8 @@ pub trait ModProvider: Send + Sync {
     fn display_name(&self) -> &'static str;
     
     /// Searches for packages matching the query.
-    async fn search(&self, query: &str) -> Result<Vec<ProviderSearchResult>>;
+    fn search<'a>(&'a self, query: &'a str) -> futures::future::BoxFuture<'a, Result<Vec<ProviderSearchResult>>>;
 
     /// Resolves a package and its dependencies for a specific Minecraft version and loader.
-    async fn resolve(&self, project: &str, mc_version: &str, loader: &str) -> Result<Vec<ResolvedTarget>>;
+    fn resolve<'a>(&'a self, project: &'a str, mc_version: &'a str, loader: &'a str) -> futures::future::BoxFuture<'a, Result<Vec<ResolvedTarget>>>;
 }
