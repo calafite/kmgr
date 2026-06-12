@@ -5,12 +5,12 @@ use std::io::{self, Write};
 use tokio::fs;
 
 /// Interactively builds the environment configuration with robust validation and normalization.
+/// Uses absolute paths, cannot resolve shell symbols (e.g, *)
 pub async fn do_cmd() -> Result<()> {
     println!("{} Starting interactive setup...", "::".cyan().bold());
 
     let mut state = KmgrState::load().await?;
-
-    // 1. Prompt and Validate Minecraft Version
+    
     let mc_version;
     loop {
         let has_current = !state.default_mc_version.is_empty();
@@ -42,11 +42,8 @@ pub async fn do_cmd() -> Result<()> {
             }
         }
 
-        // Normalize: lowercase, trim spaces
         let normalized = val.to_lowercase();
 
-        // Validate version format: alphanumeric, dots, dashes, underscores only
-        // Must contain at least one digit
         let has_digit = normalized.chars().any(|c| c.is_ascii_digit());
         let only_valid_chars = normalized
             .chars()
@@ -64,7 +61,6 @@ pub async fn do_cmd() -> Result<()> {
         }
     }
 
-    // 2. Prompt and Validate Mod Loader
     let mod_loader;
     let supported_loaders = ["fabric", "forge", "neoforge", "quilt"];
     loop {
@@ -101,7 +97,6 @@ pub async fn do_cmd() -> Result<()> {
             }
         }
 
-        // Normalize: lowercase, trim spaces
         let normalized = val.to_lowercase();
 
         if supported_loaders.contains(&normalized.as_str()) {
@@ -116,8 +111,7 @@ pub async fn do_cmd() -> Result<()> {
             );
         }
     }
-
-    // 3. Prompt and Validate Mods Folder Path
+    
     let mods_folder;
     loop {
         let has_current = !state.mods_folder.is_empty();
@@ -146,7 +140,6 @@ pub async fn do_cmd() -> Result<()> {
             }
         }
 
-        // Validate path: can't contain bad characters
         let invalid_chars = ['\0', '*', '?', '"', '<', '>', '|'];
         if val.chars().any(|c| invalid_chars.contains(&c)) {
             eprintln!(
@@ -156,7 +149,6 @@ pub async fn do_cmd() -> Result<()> {
             continue;
         }
 
-        // Normalize path: trim trailing slashes, replace windows-style slashes if they entered them
         let mut normalized = val.replace('\\', "/");
         while normalized.ends_with('/') {
             normalized.pop();
@@ -171,12 +163,10 @@ pub async fn do_cmd() -> Result<()> {
         break;
     }
 
-    // Update state fields
     state.default_mc_version = mc_version;
     state.mod_loader = mod_loader;
     state.mods_folder = mods_folder;
 
-    // Verify directory creation/existence
     fs::create_dir_all(&state.mods_folder).await?;
     println!(
         "   {} Verified `{}` directory",
