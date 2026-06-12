@@ -7,7 +7,7 @@ use tokio::fs;
 /// Interactively builds the environment configuration with robust validation and normalization.
 /// Uses absolute paths, cannot resolve shell symbols (e.g, *)
 pub async fn do_cmd() -> Result<()> {
-    println!("{} Starting interactive setup...", "::".cyan().bold());
+    println!("{} Starting interactive setup...", "".cyan().bold());
 
     let mut state = KmgrState::load().await?;
     

@@ -14,7 +14,7 @@ pub async fn do_cmd() -> Result<()> {
     state.check_initialized()?;
     let downloader = Downloader::new();
     
-    println!("{} Syncing mod files from configs...\n", "::".cyan().bold());
+    println!("{} Syncing mod files from configs...\n", "".cyan().bold());
     
     if state.installed_mods.is_empty() {
         println!("   {} No mods installed in configuration.", "=".bright_black());
@@ -74,7 +74,7 @@ pub async fn do_cmd() -> Result<()> {
     }
 
     if restored_count > 0 {
-        println!("\n{} Restored {} mod files.", "::".green().bold(), restored_count.to_string().yellow());
+        println!("\n{} Restored {} mod files.", "".green().bold(), restored_count.to_string().yellow());
     } else {
         println!("{} All files are present and synced.", "✔".green());
     }

@@ -13,7 +13,7 @@ pub async fn do_cmd(apply: bool) -> Result<()> {
 
     println!(
         "{} Checking installed dependencies...\n",
-        "::".cyan().bold()
+        "".cyan().bold()
     );
 
     if state.installed_mods.is_empty() {
@@ -143,7 +143,7 @@ pub async fn do_cmd(apply: bool) -> Result<()> {
             state.save().await?;
             println!(
                 "\n{} Successfully applied {} updates.",
-                "::".green().bold(),
+                "".green().bold(),
                 applied_count.to_string().yellow()
             );
         } else {

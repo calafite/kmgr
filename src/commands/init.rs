@@ -9,7 +9,7 @@ use colored::Colorize;
 /// Configures the base state, provisions necessary directories, and writes
 /// the initial configuration to disk.
 pub async fn do_cmd(mc_version: String, loader: String) -> Result<()> {
-    println!("{} Initialize kmgr environment...", "::".cyan().bold());
+    println!("{} Initialize kmgr environment...", "".cyan().bold());
     
     let mut state = KmgrState::load().await?;
     state.default_mc_version = mc_version;

@@ -11,7 +11,7 @@ pub async fn do_cmd() -> Result<()> {
     state.check_initialized()?;
     
     let active = state.active_profile.clone();
-    println!("{} Installed mods (Profile: {}, Minecraft {}, Loader: {}):\n", "::".cyan().bold(), active.green(), state.default_mc_version.yellow(), state.mod_loader.magenta());
+    println!("{} Installed mods (Profile: {}, Minecraft {}, Loader: {}):\n", "".cyan().bold(), active.green(), state.default_mc_version.yellow(), state.mod_loader.magenta());
 
     if state.installed_mods.is_empty() {
         println!("   No mods installed.");

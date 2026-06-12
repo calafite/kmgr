@@ -13,7 +13,7 @@ pub async fn do_cmd(mod_name: String) -> Result<()> {
     state.check_initialized()?;
     
     if let Some(id) = state.find_mod_id(&mod_name) {
-        println!("{} Removing {}...", "::".cyan().bold(), mod_name.green());
+        println!("{} Removing {}...", "".cyan().bold(), mod_name.green());
         let (file, path) = {
             let mod_info = state.installed_mods.get(&id).unwrap();
             (mod_info.filename.clone(), state.get_mod_path(&mod_info.filename, mod_info.enabled))
@@ -32,7 +32,7 @@ pub async fn do_cmd(mod_name: String) -> Result<()> {
         }
 
         state.save().await?;
-        println!("{} Successfully uninstalled.", "::".green().bold());
+        println!("{} Successfully uninstalled.", "".green().bold());
         println!("   {} Tip: Run `kmgr prune` to remove unused dependencies.", "ℹ".blue());
     } else {
         println!("{} Mod '{}' not found in installed list.", "⚠".yellow(), mod_name.magenta());

@@ -12,7 +12,7 @@ pub async fn do_cmd(query: String, source_opt: Option<String>) -> Result<()> {
         None => registry.get_default()?,
     };
 
-    println!("{} Searching {} for '{}'...\n", "::".cyan().bold(), provider.display_name().magenta(), query.yellow());
+    println!("{} Searching {} for '{}'...\n", "".cyan().bold(), provider.display_name().magenta(), query.yellow());
 
     match provider.search(&query).await {
         Ok(results) => {
