@@ -80,11 +80,6 @@ fn default_true() -> bool {
     true
 }
 
-/// Returns an empty vector of strings.
-fn default_empty_vec() -> Vec<String> {
-    Vec::new()
-}
-
 /// Returns a default profiles map containing only the "default" profile.
 fn default_profiles() -> BTreeMap<String, Vec<String>> {
     let mut m = BTreeMap::new();
@@ -103,20 +98,15 @@ pub struct InstalledMod {
     pub version: String,
     pub source: String,
     pub filename: String,
-    #[serde(default = "default_empty_string")]
+    #[serde(default)]
     pub download_url: String,
     pub hash: Option<String>,
     #[serde(default = "default_true")]
     pub is_explicit: bool,
-    #[serde(default = "default_empty_vec")]
+    #[serde(default)]
     pub dependencies: Vec<String>,
     #[serde(default = "default_true")]
     pub enabled: bool,
-}
-
-/// Returns an empty string.
-fn default_empty_string() -> String {
-    "".to_string()
 }
 
 impl KmgrState {
