@@ -34,7 +34,6 @@ pub async fn do_cmd() -> Result<()> {
         if Path::new(&dest).exists() {
             needs_download = false;
             
-            // Check if file is corrupted
             if let Some(expected_hash) = &mod_info.hash {
                 let bytes = tokio::fs::read(&dest).await.unwrap_or_default();
                 let is_sha1 = expected_hash.len() == 40;
@@ -66,7 +65,6 @@ pub async fn do_cmd() -> Result<()> {
             println!("   {} Restoring {}...", "↓".blue(), mod_info.filename.cyan());
             if let Err(e) = downloader.download_file(&mod_info.download_url, &dest, mod_info.hash.as_deref()).await {
                 eprintln!("      {} Failed: {}", "✗".red(), e);
-                // Clean up the partial/corrupted file if it exists
                 let _ = tokio::fs::remove_file(&dest).await;
             } else {
                 println!("      {} Done", "✔".green());
