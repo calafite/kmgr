@@ -58,17 +58,29 @@ impl Default for KmgrState {
     }
 }
 
-fn default_mc_version_str() -> String { "".to_string() }
-fn default_mod_loader_str() -> String { "".to_string() }
-fn default_mods_folder_str() -> String { "mods".to_string() }
-fn default_true() -> bool { true }
-fn default_empty_vec() -> Vec<String> { Vec::new() }
+fn default_mc_version_str() -> String {
+    "".to_string()
+}
+fn default_mod_loader_str() -> String {
+    "".to_string()
+}
+fn default_mods_folder_str() -> String {
+    "mods".to_string()
+}
+fn default_true() -> bool {
+    true
+}
+fn default_empty_vec() -> Vec<String> {
+    Vec::new()
+}
 fn default_profiles() -> HashMap<String, Vec<String>> {
     let mut m = HashMap::new();
     m.insert("default".to_string(), Vec::new());
     m
 }
-fn default_active_profile() -> String { "default".to_string() }
+fn default_active_profile() -> String {
+    "default".to_string()
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct InstalledMod {
@@ -87,7 +99,9 @@ pub struct InstalledMod {
     pub enabled: bool,
 }
 
-fn default_empty_string() -> String { "".to_string() }
+fn default_empty_string() -> String {
+    "".to_string()
+}
 
 impl KmgrState {
     /// Loads application state configuration.
@@ -115,7 +129,9 @@ impl KmgrState {
         };
 
         if !state.profiles.contains_key(&state.active_profile) {
-            state.profiles.insert(state.active_profile.clone(), Vec::new());
+            state
+                .profiles
+                .insert(state.active_profile.clone(), Vec::new());
         }
 
         if state.profiles.len() == 1 && state.active_profile == "default" {
@@ -128,14 +144,16 @@ impl KmgrState {
                 }
             }
         }
-        
+
         Ok(state)
     }
 
     /// Checks if the environment is initialized with standard configurations.
     pub fn check_initialized(&self) -> Result<()> {
         if self.default_mc_version.is_empty() {
-            anyhow::bail!("Minecraft version is not configured. Run `kmgr setup` or `kmgr init` first.");
+            anyhow::bail!(
+                "Minecraft version is not configured. Run `kmgr setup` or `kmgr init` first."
+            );
         }
         if self.mod_loader.is_empty() {
             anyhow::bail!("Mod loader is not configured. Run `kmgr setup` or `kmgr init` first.");
@@ -155,7 +173,51 @@ impl KmgrState {
         }
         None
     }
-    
+
+    /// Fuzzy-matches a query against installed mod names and ids.
+    ///
+    /// Returns the best `(id, display_name)` pair above a similarity threshold,
+    /// preferring exact > case-insensitive > substring > edit-distance matches.
+    pub fn find_mod_id_fuzzy(&self, query: &str) -> Option<(String, String)> {
+        let q = query.to_lowercase();
+
+        // 1. Exact
+        for (id, m) in &self.installed_mods {
+            if id == query || m.name == query {
+                return Some((id.clone(), m.name.clone()));
+            }
+        }
+
+        // 2. Case-insensitive exact
+        for (id, m) in &self.installed_mods {
+            if id.to_lowercase() == q || m.name.to_lowercase() == q {
+                return Some((id.clone(), m.name.clone()));
+            }
+        }
+
+        // 3. Substring / edit-distance — pick highest scoring candidate
+        let mut best: Option<(String, String, f64)> = None;
+
+        for (id, m) in &self.installed_mods {
+            let name_lc = m.name.to_lowercase();
+            let id_lc = id.to_lowercase();
+
+            let score = if name_lc.contains(&q) || id_lc.contains(&q) {
+                0.85
+            } else {
+                fuzzy_similarity(&q, &name_lc).max(fuzzy_similarity(&q, &id_lc))
+            };
+
+            if score >= 0.5 {
+                if best.as_ref().map_or(true, |(_, _, s)| score > *s) {
+                    best = Some((id.clone(), m.name.clone(), score));
+                }
+            }
+        }
+
+        best.map(|(id, name, _)| (id, name))
+    }
+
     /// Computes full deployment locations for packages.
     ///
     /// Takes a target filename and an activation flag. Interpolates the final
@@ -202,3 +264,33 @@ async fn atomic_write(path: &str, content: &str) -> Result<()> {
     Ok(())
 }
 
+fn levenshtein(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    let (m, n) = (a.len(), b.len());
+    let mut dp = vec![vec![0usize; n + 1]; m + 1];
+    for i in 0..=m {
+        dp[i][0] = i;
+    }
+    for j in 0..=n {
+        dp[0][j] = j;
+    }
+    for i in 1..=m {
+        for j in 1..=n {
+            dp[i][j] = if a[i - 1] == b[j - 1] {
+                dp[i - 1][j - 1]
+            } else {
+                1 + dp[i - 1][j].min(dp[i][j - 1]).min(dp[i - 1][j - 1])
+            };
+        }
+    }
+    dp[m][n]
+}
+
+fn fuzzy_similarity(a: &str, b: &str) -> f64 {
+    let max_len = a.len().max(b.len());
+    if max_len == 0 {
+        return 1.0;
+    }
+    1.0 - levenshtein(a, b) as f64 / max_len as f64
+}
