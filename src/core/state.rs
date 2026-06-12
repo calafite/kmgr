@@ -226,11 +226,13 @@ impl KmgrState {
     /// Takes a target filename and an activation flag. Interpolates the final
     /// location across the deployment scope.
     pub fn get_mod_path(&self, filename: &str, enabled: bool) -> String {
-        let mut dest = format!("{}/{}", self.mods_folder, filename);
+        let mut dest = std::path::Path::new(&self.mods_folder).join(filename);
         if !enabled {
-            dest.push_str(".disabled");
+            let mut ext = dest.into_os_string();
+            ext.push(".disabled");
+            dest = std::path::PathBuf::from(ext);
         }
-        dest
+        dest.to_string_lossy().to_string()
     }
 
     /// Extends configuration to durable storage.
