@@ -3,7 +3,6 @@
 use anyhow::Result;
 use reqwest::Client;
 use serde::Deserialize;
-use async_trait::async_trait;
 use crate::core::provider::{ModProvider, ProviderSearchResult, ResolvedTarget};
 
 pub struct SourceForgeClient {
@@ -46,7 +45,6 @@ impl SourceForgeClient {
     }
 }
 
-#[async_trait]
 impl ModProvider for SourceForgeClient {
     /// Returns the unique identifier for the SourceForge provider.
     fn id(&self) -> &'static str { "sourceforge" }

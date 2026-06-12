@@ -4,7 +4,6 @@ use anyhow::Result;
 use reqwest::{header, Client};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use async_trait::async_trait;
 use crate::core::provider::{ModProvider, ProviderSearchResult, ResolvedTarget};
 
 pub struct ModrinthClient {
@@ -114,7 +113,6 @@ impl ModrinthClient {
     }
 }
 
-#[async_trait]
 impl ModProvider for ModrinthClient {
     /// Returns the unique identifier for the Modrinth provider.
     fn id(&self) -> &'static str { "modrinth" }

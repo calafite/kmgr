@@ -1,5 +1,4 @@
 use anyhow::Result;
-use async_trait::async_trait;
 
 #[derive(Debug, Clone)]
 pub struct ProviderSearchResult {
@@ -21,7 +20,6 @@ pub struct ResolvedTarget {
     pub dependencies: Vec<String>,
 }
 
-#[async_trait]
 pub trait ModProvider: Send + Sync {
     /// Returns the unique identifier of the provider.
     fn id(&self) -> &'static str;
