@@ -10,6 +10,9 @@ use tokio::fs;
 /// required packages using local registry constraints, and deletes any
 /// remaining artifacts that no longer have a parent dependency trace.
 pub async fn do_cmd() -> Result<()> {
+    let mut _lock = fslock::LockFile::open("kmgr.flock")?;
+    _lock.lock()?;
+
     let mut state = KmgrState::load().await?;
     state.check_initialized()?;
     

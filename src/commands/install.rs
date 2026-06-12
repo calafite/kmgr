@@ -12,6 +12,9 @@ use colored::Colorize;
 /// required artifacts, cleans up obsolete versions, and registers the component
 /// in local state.
 pub async fn do_cmd(mod_name: String, mc_version: Option<String>, source_opt: Option<String>) -> Result<()> {
+    let mut _lock = fslock::LockFile::open("kmgr.flock")?;
+    _lock.lock()?;
+
     let mut state = KmgrState::load().await?;
     state.check_initialized()?;
     let version_str = mc_version.unwrap_or_else(|| state.default_mc_version.clone());

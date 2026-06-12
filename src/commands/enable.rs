@@ -8,6 +8,9 @@ use tokio::fs;
 /// Refactors the targeted package by stripping the `.disabled` suffix from its
 /// artifact and updating its registry state to active.
 pub async fn do_cmd(mod_name: String) -> Result<()> {
+    let mut _lock = fslock::LockFile::open("kmgr.flock")?;
+    _lock.lock()?;
+
     let mut state = KmgrState::load().await?;
     state.check_initialized()?;
 

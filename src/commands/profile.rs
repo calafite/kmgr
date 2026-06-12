@@ -9,6 +9,9 @@ use std::collections::HashSet;
 ///
 /// Takes a ProfileCommands enum variant and routes it to the correct handler.
 pub async fn do_cmd(command: ProfileCommands) -> Result<()> {
+    let mut _lock = fslock::LockFile::open("kmgr.flock")?;
+    _lock.lock()?;
+
     let state = KmgrState::load().await?;
     state.check_initialized()?;
 
