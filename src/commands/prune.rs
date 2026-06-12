@@ -10,6 +10,9 @@ use tokio::fs;
 /// required packages using local registry constraints, and deletes any
 /// remaining artifacts that no longer have a parent dependency trace.
 pub async fn do_cmd() -> Result<()> {
+    let mut _lock = fslock::LockFile::open("kmgr.flock")?;
+    _lock.lock()?;
+
     let mut state = KmgrState::load().await?;
     state.check_initialized()?;
     
@@ -51,11 +54,11 @@ pub async fn do_cmd() -> Result<()> {
     }
 
     if to_remove.is_empty() {
-        println!("{} No orphaned dependencies to remove.", "::".cyan().bold());
+        println!("{} No orphaned dependencies to remove.", "".cyan().bold());
         return Ok(());
     }
 
-    println!("{} Removing {} orphaned dependencies...\n", "::".cyan().bold(), to_remove.len().to_string().yellow());
+    println!("{} Removing {} orphaned dependencies...\n", "".cyan().bold(), to_remove.len().to_string().yellow());
 
     let mut removed_count = 0;
     for (id, filename, name) in to_remove {

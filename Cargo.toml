@@ -5,16 +5,15 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "*", features = ["derive"] }
-reqwest = { version = "*", features = ["json"] }
+reqwest = { version = "*", features = ["json", "stream"] }
 tokio = { version = "*", features = ["full"] }
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 anyhow = "*"
 colored = "*"
 toml = "*"
-async-trait = "*"
 sha1 = "0.10"
 sha2 = "0.10"
 hex = "0.4"
 futures = "*"
-
+fslock = "0.2"

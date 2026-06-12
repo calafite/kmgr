@@ -3,7 +3,6 @@
 use anyhow::Result;
 use reqwest::Client;
 use serde::Deserialize;
-use async_trait::async_trait;
 use crate::core::provider::{ModProvider, ProviderSearchResult, ResolvedTarget};
 
 pub struct SourceForgeClient {
@@ -46,7 +45,6 @@ impl SourceForgeClient {
     }
 }
 
-#[async_trait]
 impl ModProvider for SourceForgeClient {
     /// Returns the unique identifier for the SourceForge provider.
     fn id(&self) -> &'static str { "sourceforge" }
@@ -55,39 +53,43 @@ impl ModProvider for SourceForgeClient {
     fn display_name(&self) -> &'static str { "SourceForge" }
     
     /// Searches for projects on SourceForge matching the query.
-    async fn search(&self, query: &str) -> Result<Vec<ProviderSearchResult>> {
-        match self.get_project(query).await {
-            Ok(p) => {
-                let mut results = vec![];
-                results.push(ProviderSearchResult {
-                    title: p.name,
-                    description: p.shortdesc.unwrap_or_default(),
-                    id_or_slug: query.to_string(),
-                    extra: p.url,
-                });
-                Ok(results)
+    fn search<'a>(&'a self, query: &'a str) -> futures::future::BoxFuture<'a, Result<Vec<ProviderSearchResult>>> {
+        Box::pin(async move {
+            match self.get_project(query).await {
+                Ok(p) => {
+                    let mut results = vec![];
+                    results.push(ProviderSearchResult {
+                        title: p.name,
+                        description: p.shortdesc.unwrap_or_default(),
+                        id_or_slug: query.to_string(),
+                        extra: p.url,
+                    });
+                    Ok(results)
+                }
+                Err(_) => {
+                    Ok(vec![])
+                }
             }
-            Err(_) => {
-                Ok(vec![])
-            }
-        }
+        })
     }
 
     /// Resolves a project to its latest download target.
-    async fn resolve(&self, project_name: &str, _mc_version: &str, _loader: &str) -> Result<Vec<ResolvedTarget>> {
-        let _project = self.get_project(project_name).await?;
-        
-        let download_url = self.get_latest_download_url(project_name);
-        
-        Ok(vec![ResolvedTarget {
-            id: project_name.to_string(),
-            name: _project.name,
-            download_url,
-            hash: None,
-            filename: format!("{}-latest.jar", project_name),
-            source: self.id().to_string(),
-            version: "latest".to_string(),
-            dependencies: vec![],
-        }])
+    fn resolve<'a>(&'a self, project_name: &'a str, _mc_version: &'a str, _loader: &'a str) -> futures::future::BoxFuture<'a, Result<Vec<ResolvedTarget>>> {
+        Box::pin(async move {
+            let _project = self.get_project(project_name).await?;
+            
+            let download_url = self.get_latest_download_url(project_name);
+            
+            Ok(vec![ResolvedTarget {
+                id: project_name.to_string(),
+                name: _project.name,
+                download_url,
+                hash: None,
+                filename: format!("{}-latest.jar", project_name),
+                source: self.id().to_string(),
+                version: "latest".to_string(),
+                dependencies: vec![],
+            }])
+        })
     }
 }

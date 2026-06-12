@@ -9,6 +9,9 @@ use std::collections::HashSet;
 ///
 /// Takes a ProfileCommands enum variant and routes it to the correct handler.
 pub async fn do_cmd(command: ProfileCommands) -> Result<()> {
+    let mut _lock = fslock::LockFile::open("kmgr.flock")?;
+    _lock.lock()?;
+
     let state = KmgrState::load().await?;
     state.check_initialized()?;
 
@@ -36,7 +39,7 @@ pub async fn do_cmd(command: ProfileCommands) -> Result<()> {
 /// Retrieves and renders all established layout profiles.
 async fn list() -> Result<()> {
     let state = KmgrState::load().await?;
-    println!("{} Profiles:", "::".cyan().bold());
+    println!("{} Profiles:", "".cyan().bold());
     
     for (name, mods) in &state.profiles {
         let active_mark = if name == &state.active_profile { "*".green().bold() } else { " ".normal() };
@@ -156,7 +159,7 @@ async fn switch(name: String) -> Result<()> {
         }
     }
     
-    println!("{} Switching to profile '{}'...", "::".cyan().bold(), name.green());
+    println!("{} Switching to profile '{}'...", "".cyan().bold(), name.green());
     
     if to_enable.is_empty() && to_disable.is_empty() {
         println!("   {} No changes needed.", "=".bright_black());

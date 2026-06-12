@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use tokio::fs;
 
 #[derive(Debug)]
@@ -8,8 +8,8 @@ pub struct KmgrState {
     pub default_mc_version: String,
     pub mod_loader: String,
     pub mods_folder: String,
-    pub installed_mods: HashMap<String, InstalledMod>,
-    pub profiles: HashMap<String, Vec<String>>,
+    pub installed_mods: BTreeMap<String, InstalledMod>,
+    pub profiles: BTreeMap<String, Vec<String>>,
     pub active_profile: String,
 }
 
@@ -22,7 +22,7 @@ struct ConfigDto {
     #[serde(default = "default_mods_folder_str")]
     mods_folder: String,
     #[serde(default = "default_profiles")]
-    profiles: HashMap<String, Vec<String>>,
+    profiles: BTreeMap<String, Vec<String>>,
     #[serde(default = "default_active_profile")]
     active_profile: String,
 }
@@ -43,7 +43,7 @@ impl Default for ConfigDto {
 #[derive(Serialize, Deserialize, Default)]
 struct LockDto {
     #[serde(default)]
-    installed_mods: HashMap<String, InstalledMod>,
+    installed_mods: BTreeMap<String, InstalledMod>,
 }
 
 impl Default for KmgrState {
@@ -53,7 +53,7 @@ impl Default for KmgrState {
             default_mc_version: default_mc_version_str(),
             mod_loader: default_mod_loader_str(),
             mods_folder: default_mods_folder_str(),
-            installed_mods: HashMap::new(),
+            installed_mods: BTreeMap::new(),
             profiles: default_profiles(),
             active_profile: default_active_profile(),
         }
@@ -80,14 +80,9 @@ fn default_true() -> bool {
     true
 }
 
-/// Returns an empty vector of strings.
-fn default_empty_vec() -> Vec<String> {
-    Vec::new()
-}
-
 /// Returns a default profiles map containing only the "default" profile.
-fn default_profiles() -> HashMap<String, Vec<String>> {
-    let mut m = HashMap::new();
+fn default_profiles() -> BTreeMap<String, Vec<String>> {
+    let mut m = BTreeMap::new();
     m.insert("default".to_string(), Vec::new());
     m
 }
@@ -103,20 +98,15 @@ pub struct InstalledMod {
     pub version: String,
     pub source: String,
     pub filename: String,
-    #[serde(default = "default_empty_string")]
+    #[serde(default)]
     pub download_url: String,
     pub hash: Option<String>,
     #[serde(default = "default_true")]
     pub is_explicit: bool,
-    #[serde(default = "default_empty_vec")]
+    #[serde(default)]
     pub dependencies: Vec<String>,
     #[serde(default = "default_true")]
     pub enabled: bool,
-}
-
-/// Returns an empty string.
-fn default_empty_string() -> String {
-    "".to_string()
 }
 
 impl KmgrState {
@@ -236,11 +226,13 @@ impl KmgrState {
     /// Takes a target filename and an activation flag. Interpolates the final
     /// location across the deployment scope.
     pub fn get_mod_path(&self, filename: &str, enabled: bool) -> String {
-        let mut dest = format!("{}/{}", self.mods_folder, filename);
+        let mut dest = std::path::Path::new(&self.mods_folder).join(filename);
         if !enabled {
-            dest.push_str(".disabled");
+            let mut ext = dest.into_os_string();
+            ext.push(".disabled");
+            dest = std::path::PathBuf::from(ext);
         }
-        dest
+        dest.to_string_lossy().to_string()
     }
 
     /// Extends configuration to durable storage.

@@ -8,6 +8,9 @@ use tokio::fs;
 /// Renames the target artifact by appending `.disabled` to its filename and
 /// updates the local state to prevent it from loading.
 pub async fn do_cmd(mod_name: String) -> Result<()> {
+    let mut _lock = fslock::LockFile::open("kmgr.flock")?;
+    _lock.lock()?;
+
     let mut state = KmgrState::load().await?;
     state.check_initialized()?;
 
@@ -24,7 +27,7 @@ pub async fn do_cmd(mod_name: String) -> Result<()> {
         if !was_enabled {
             println!(
                 "{} Mod '{}' is already disabled.",
-                "::".cyan().bold(),
+                "".cyan().bold(),
                 mod_name.green()
             );
             return Ok(());
