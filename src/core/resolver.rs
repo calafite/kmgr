@@ -1,7 +1,7 @@
-use anyhow::Result;
-use std::collections::{HashMap, HashSet};
 use crate::clients::modrinth::{ModrinthClient, Version};
+use anyhow::Result;
 use colored::Colorize;
+use std::collections::{HashMap, HashSet};
 
 /// Resolves dependencies using a Breadth-First Search approach.
 /// Currently optimized for Modrinth as it exposes a structural dependency graph.
@@ -18,12 +18,21 @@ impl DependencyResolver {
 
     /// Takes a root project slug/id and traverses the dependency tree.
     /// Returns a list of all required `Version` manifests to download.
-    pub async fn resolve_modrinth(&self, project_slug: &str, mc_version: &str) -> Result<Vec<Version>> {
+    pub async fn resolve_modrinth(
+        &self,
+        project_slug: &str,
+        mc_version: &str,
+    ) -> Result<Vec<Version>> {
         let mut resolved_versions: HashMap<String, Version> = HashMap::new(); // project_id -> Version
         let mut queue: Vec<String> = vec![project_slug.to_string()];
         let mut seen_projects: HashSet<String> = HashSet::new();
 
-        println!("{} Resolving dependencies for {} on MC {}...", "::".cyan().bold(), project_slug.green(), mc_version.yellow());
+        println!(
+            "{} Resolving dependencies for {} on MC {}...",
+            "::".cyan().bold(),
+            project_slug.green(),
+            mc_version.yellow()
+        );
 
         while let Some(current_req) = queue.pop() {
             if seen_projects.contains(&current_req) {
@@ -38,17 +47,18 @@ impl DependencyResolver {
                     continue;
                 }
             };
-            
+
             seen_projects.insert(project.id.clone());
             seen_projects.insert(project.slug.clone());
 
             // 2. Resolve target version for MC version
             let mut versions = self.modrinth.get_versions(&project.id, mc_version).await?;
-            
-            if let Some(target_version) = versions.pop() { // Get latest compatible version
+
+            if let Some(target_version) = versions.pop() {
+                // Get latest compatible version
                 let v_str = format!("v{}", target_version.version_number).bright_black();
                 println!("   {} {} {}", "✔".green(), project.title.cyan(), v_str);
-                
+
                 // 3. Process dependencies
                 for dep in &target_version.dependencies {
                     if dep.dependency_type == "required" {
@@ -64,16 +74,18 @@ impl DependencyResolver {
                         }
                     }
                 }
-                
+
                 resolved_versions.insert(project.id.clone(), target_version);
             } else {
-                eprintln!("   {} No compatible version found for '{}' on MC {}", "⚠".yellow(), project.title.magenta(), mc_version);
+                eprintln!(
+                    "   {} No compatible version found for '{}' on MC {}",
+                    "⚠".yellow(),
+                    project.title.magenta(),
+                    mc_version
+                );
             }
         }
 
         Ok(resolved_versions.into_values().collect())
     }
-    
-    // Future: resolve_sourceforge(&self, url: &str) ... 
-    // SourceForge mods typically require manual dependency resolution or parsing inside downloaded JARs.
 }

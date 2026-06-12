@@ -1,5 +1,5 @@
 use super::provider::ModProvider;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::collections::HashMap;
 
 pub struct ProviderRegistry {
@@ -14,22 +14,22 @@ impl ProviderRegistry {
     }
 
     pub fn register(&mut self, provider: Box<dyn ModProvider>) {
-        self.providers.insert(provider.id().to_lowercase(), provider);
+        self.providers
+            .insert(provider.id().to_lowercase(), provider);
     }
 
     pub fn get(&self, id: &str) -> Result<&dyn ModProvider> {
         let mut key = id.to_lowercase();
-        // Support common aliases
         if key == "sf" {
             key = "sourceforge".to_string();
         }
-        
+
         self.providers
             .get(&key)
             .map(|p| p.as_ref())
             .ok_or_else(|| anyhow!("Provider '{}' not found", id))
     }
-    
+
     pub fn get_default(&self) -> Result<&dyn ModProvider> {
         self.get("modrinth")
     }
