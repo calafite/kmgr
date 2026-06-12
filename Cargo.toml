@@ -1,0 +1,20 @@
+[package]
+name = "kmgr"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "*", features = ["derive"] }
+reqwest = { version = "*", features = ["json"] }
+tokio = { version = "*", features = ["full"] }
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+anyhow = "*"
+colored = "*"
+toml = "*"
+async-trait = "*"
+sha1 = "0.10"
+sha2 = "0.10"
+hex = "0.4"
+futures = "*"
+
