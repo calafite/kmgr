@@ -1,10 +1,8 @@
-#![allow(dead_code)]
-
+use crate::core::provider::{ModProvider, ProviderSearchResult, ResolvedTarget};
 use anyhow::Result;
-use reqwest::{header, Client};
+use reqwest::{Client, header};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use crate::core::provider::{ModProvider, ProviderSearchResult, ResolvedTarget};
 
 pub struct ModrinthClient {
     client: Client,
@@ -74,7 +72,9 @@ impl ModrinthClient {
     /// Performs an internal search query against the Modrinth API.
     pub async fn search_mods_internal(&self, query: &str) -> Result<SearchResponse> {
         let url = format!("{}/search", self.base_url);
-        let response = self.client.get(&url)
+        let response = self
+            .client
+            .get(&url)
             .query(&[("query", query)])
             .send()
             .await?
@@ -86,29 +86,36 @@ impl ModrinthClient {
     pub async fn get_project(&self, id_or_slug: &str) -> Result<Project> {
         let url = format!("{}/project/{}", self.base_url, id_or_slug);
         let response = self.client.get(&url).send().await?;
-        
+
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             anyhow::bail!("Project '{}' not found on Modrinth", id_or_slug);
         }
-        
+
         Ok(response.error_for_status()?.json().await?)
     }
 
     /// Retrieves compatible versions of a project filtered by Minecraft version and loader.
-    pub async fn get_versions(&self, project_id: &str, mc_version: &str, loader: &str) -> Result<Vec<Version>> {
+    pub async fn get_versions(
+        &self,
+        project_id: &str,
+        mc_version: &str,
+        loader: &str,
+    ) -> Result<Vec<Version>> {
         let game_versions = format!("[\"{}\"]", mc_version);
         let loaders = format!("[\"{}\"]", loader);
         let url = format!("{}/project/{}/version", self.base_url, project_id);
-        
-        let response = self.client.get(&url)
+
+        let response = self
+            .client
+            .get(&url)
             .query(&[("game_versions", &game_versions), ("loaders", &loaders)])
             .send()
             .await?
             .error_for_status()?;
-            
+
         Ok(response.json().await?)
     }
-    
+
     /// Retrieves details of a specific version by its ID.
     pub async fn get_version(&self, version_id: &str) -> Result<Version> {
         let url = format!("{}/version/{}", self.base_url, version_id);
@@ -119,36 +126,52 @@ impl ModrinthClient {
 
 impl ModProvider for ModrinthClient {
     /// Returns the unique identifier for the Modrinth provider.
-    fn id(&self) -> &'static str { "modrinth" }
+    fn id(&self) -> &'static str {
+        "modrinth"
+    }
 
     /// Returns the display name of the Modrinth provider.
-    fn display_name(&self) -> &'static str { "Modrinth" }
-    
+    fn display_name(&self) -> &'static str {
+        "Modrinth"
+    }
+
     /// Searches for mods on Modrinth matching the query.
-    fn search<'a>(&'a self, query: &'a str) -> futures::future::BoxFuture<'a, Result<Vec<ProviderSearchResult>>> {
+    fn search<'a>(
+        &'a self,
+        query: &'a str,
+    ) -> futures::future::BoxFuture<'a, Result<Vec<ProviderSearchResult>>> {
         Box::pin(async move {
             let response = self.search_mods_internal(query).await?;
-            
-            let mapped = response.hits.into_iter().map(|h| ProviderSearchResult {
-                title: h.title,
-                description: h.description,
-                id_or_slug: h.slug,
-                extra: Some(format!("Project Type: {}", h.project_type)),
-            }).collect();
-            
+
+            let mapped = response
+                .hits
+                .into_iter()
+                .map(|h| ProviderSearchResult {
+                    title: h.title,
+                    description: h.description,
+                    id_or_slug: h.slug,
+                    extra: Some(format!("Project Type: {}", h.project_type)),
+                })
+                .collect();
+
             Ok(mapped)
         })
     }
 
     /// Resolves a project and its required dependencies recursively.
-    fn resolve<'a>(&'a self, project_slug: &'a str, mc_version: &'a str, loader: &'a str) -> futures::future::BoxFuture<'a, Result<Vec<ResolvedTarget>>> {
+    fn resolve<'a>(
+        &'a self,
+        project_slug: &'a str,
+        mc_version: &'a str,
+        loader: &'a str,
+    ) -> futures::future::BoxFuture<'a, Result<Vec<ResolvedTarget>>> {
         Box::pin(async move {
             let mut resolved_versions: HashMap<String, Version> = HashMap::new();
             let mut queue: Vec<String> = vec![project_slug.to_string()];
             let mut seen_projects: HashSet<String> = HashSet::new();
             let mut project_names: HashMap<String, String> = HashMap::new();
             let mut project_deps: HashMap<String, Vec<String>> = HashMap::new();
-            
+
             let mut root_project_id = None;
 
             while let Some(current_req) = queue.pop() {
@@ -162,17 +185,17 @@ impl ModProvider for ModrinthClient {
                         continue;
                     }
                 };
-                
+
                 if root_project_id.is_none() {
                     root_project_id = Some(project.id.clone());
                 }
-                
+
                 seen_projects.insert(project.id.clone());
                 seen_projects.insert(project.slug.clone());
                 project_names.insert(project.id.clone(), project.title.clone());
 
                 let mut versions = self.get_versions(&project.id, mc_version, loader).await?;
-                
+
                 if let Some(target_version) = versions.pop() {
                     let mut deps_list = Vec::new();
                     for dep in &target_version.dependencies {
@@ -190,26 +213,40 @@ impl ModProvider for ModrinthClient {
                             }
                         }
                     }
-                    
+
                     project_deps.insert(project.id.clone(), deps_list);
                     resolved_versions.insert(project.id.clone(), target_version);
                 }
             }
 
-            let mut targets: Vec<ResolvedTarget> = resolved_versions.into_values().filter_map(|v| {
-                let file = v.files.iter().find(|f| f.primary).or_else(|| v.files.first());
-                file.map(|f| ResolvedTarget {
-                    id: v.project_id.clone(),
-                    name: project_names.get(&v.project_id).cloned().unwrap_or_else(|| v.project_id.clone()),
-                    download_url: f.url.clone(),
-                    hash: f.hashes.get("sha512").or_else(|| f.hashes.get("sha1")).cloned(),
-                    filename: f.filename.clone(),
-                    source: self.id().to_string(),
-                    version: v.version_number.clone(),
-                    dependencies: project_deps.get(&v.project_id).cloned().unwrap_or_default(),
+            let mut targets: Vec<ResolvedTarget> = resolved_versions
+                .into_values()
+                .filter_map(|v| {
+                    let file = v
+                        .files
+                        .iter()
+                        .find(|f| f.primary)
+                        .or_else(|| v.files.first());
+                    file.map(|f| ResolvedTarget {
+                        id: v.project_id.clone(),
+                        name: project_names
+                            .get(&v.project_id)
+                            .cloned()
+                            .unwrap_or_else(|| v.project_id.clone()),
+                        download_url: f.url.clone(),
+                        hash: f
+                            .hashes
+                            .get("sha512")
+                            .or_else(|| f.hashes.get("sha1"))
+                            .cloned(),
+                        filename: f.filename.clone(),
+                        source: self.id().to_string(),
+                        version: v.version_number.clone(),
+                        dependencies: project_deps.get(&v.project_id).cloned().unwrap_or_default(),
+                    })
                 })
-            }).collect();
-            
+                .collect();
+
             if let Some(root_id) = root_project_id {
                 if let Some(pos) = targets.iter().position(|t| t.id == root_id) {
                     let root_target = targets.remove(pos);
