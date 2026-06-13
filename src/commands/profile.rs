@@ -165,38 +165,46 @@ async fn switch(name: String) -> Result<()> {
         println!("   {} No changes needed.", "=".bright_black());
     } else {
         for id in to_enable {
-            let filename = state.installed_mods.get(&id).unwrap().filename.clone();
+            let filename = match state.installed_mods.get(&id) {
+                Some(m) => m.filename.clone(),
+                None => continue,
+            };
             let disabled_path = state.get_mod_path(&filename, false);
             let enabled_path = state.get_mod_path(&filename, true);
             
-            let info = state.installed_mods.get_mut(&id).unwrap();
-            if tokio::fs::try_exists(&disabled_path).await? {
-                if let Err(e) = fs::rename(&disabled_path, &enabled_path).await {
-                    eprintln!("   {} Failed to enable {}: {}", "✗".red(), info.name, e);
+            if let Some(info) = state.installed_mods.get_mut(&id) {
+                if tokio::fs::try_exists(&disabled_path).await? {
+                    if let Err(e) = fs::rename(&disabled_path, &enabled_path).await {
+                        eprintln!("   {} Failed to enable {}: {}", "✗".red(), info.name, e);
+                    } else {
+                        println!("   {} Enabled {}", "+".green(), info.name);
+                        info.enabled = true;
+                    }
                 } else {
-                    println!("   {} Enabled {}", "+".green(), info.name);
                     info.enabled = true;
                 }
-            } else {
-                info.enabled = true;
             }
         }
         
         for id in to_disable {
-            let filename = state.installed_mods.get(&id).unwrap().filename.clone();
+            let filename = match state.installed_mods.get(&id) {
+                Some(m) => m.filename.clone(),
+                None => continue,
+            };
             let enabled_path = state.get_mod_path(&filename, true);
             let disabled_path = state.get_mod_path(&filename, false);
             
-            let info = state.installed_mods.get_mut(&id).unwrap();
-            if tokio::fs::try_exists(&enabled_path).await? {
-                if let Err(e) = fs::rename(&enabled_path, &disabled_path).await {
-                    eprintln!("   {} Failed to disable {}: {}", "✗".red(), info.name, e);
+            if let Some(info) = state.installed_mods.get_mut(&id) {
+                if tokio::fs::try_exists(&enabled_path).await? {
+                    if let Err(e) = fs::rename(&enabled_path, &disabled_path).await {
+                        eprintln!("   {} Failed to disable {}: {}", "✗".red(), info.name, e);
+                    } else {
+                        println!("   {} Disabled {}", "-".red(), info.name);
+                        info.enabled = false;
+                    }
                 } else {
-                    println!("   {} Disabled {}", "-".red(), info.name);
                     info.enabled = false;
                 }
-            } else {
-                info.enabled = false;
             }
         }
     }
@@ -258,7 +266,9 @@ async fn rename(old_name: String, new_name: String) -> Result<()> {
         return Ok(());
     }
     
-    let mods = state.profiles.remove(&old_name).unwrap();
+    let mods = state.profiles.remove(&old_name).ok_or_else(|| {
+        anyhow!("Profile '{}' not found", old_name)
+    })?;
     state.profiles.insert(new_name.clone(), mods);
     
     if state.active_profile == old_name {

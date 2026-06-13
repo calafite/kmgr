@@ -26,7 +26,7 @@ pub async fn do_cmd(apply: bool) -> Result<()> {
         return Ok(());
     }
 
-    let registry = std::sync::Arc::new(crate::clients::build_registry());
+    let registry = std::sync::Arc::new(crate::clients::build_registry()?);
     let downloader = crate::core::downloader::Downloader::new();
 
     println!("  {}\n", "Currently installed mods:".bright_black());

@@ -141,11 +141,12 @@ impl KmgrState {
         }
 
         if state.profiles.len() == 1 && state.active_profile == "default" {
-            let default_profile = state.profiles.get_mut("default").unwrap();
-            if default_profile.is_empty() && !state.installed_mods.is_empty() {
-                for (id, m) in &state.installed_mods {
-                    if m.is_explicit {
-                        default_profile.push(id.clone());
+            if let Some(default_profile) = state.profiles.get_mut("default") {
+                if default_profile.is_empty() && !state.installed_mods.is_empty() {
+                    for (id, m) in &state.installed_mods {
+                        if m.is_explicit {
+                            default_profile.push(id.clone());
+                        }
                     }
                 }
             }

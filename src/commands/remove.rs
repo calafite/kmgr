@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use crate::core::state::KmgrState;
 use colored::Colorize;
 use std::io::{self, Write};
@@ -35,7 +35,9 @@ pub async fn do_cmd(mod_name: String) -> Result<()> {
 
         println!("{} Removing {}...", "".cyan().bold(), matched_name.green());
         let (file, path) = {
-            let mod_info = state.installed_mods.get(&id).unwrap();
+            let mod_info = state.installed_mods.get(&id).ok_or_else(|| {
+                anyhow!("Corrupted state: Mod ID '{}' not found in installed list", id)
+            })?;
             (mod_info.filename.clone(), state.get_mod_path(&mod_info.filename, mod_info.enabled))
         };
         

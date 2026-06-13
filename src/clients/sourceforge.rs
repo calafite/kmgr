@@ -19,11 +19,11 @@ pub struct SfProject {
 
 impl SourceForgeClient {
     /// Creates a new instance of the SourceForge API client.
-    pub fn new() -> Self {
-        SourceForgeClient {
-            client: Client::builder().build().unwrap(),
+    pub fn new() -> Result<Self> {
+        Ok(SourceForgeClient {
+            client: Client::builder().build()?,
             base_url: "https://sourceforge.net/rest/p".to_string(),
-        }
+        })
     }
 
     /// Retrieves project details from SourceForge using its project name.

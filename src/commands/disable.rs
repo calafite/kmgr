@@ -20,7 +20,9 @@ pub async fn do_cmd(mod_name: String) -> Result<()> {
         }
 
         let (current_filename, was_enabled) = {
-            let mod_info = state.installed_mods.get(&id).unwrap();
+            let mod_info = state.installed_mods.get(&id).ok_or_else(|| {
+                anyhow!("Corrupted state: Mod ID '{}' not found in installed list", id)
+            })?;
             (mod_info.filename.clone(), mod_info.enabled)
         };
 

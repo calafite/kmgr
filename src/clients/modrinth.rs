@@ -55,17 +55,17 @@ pub struct Version {
 
 impl ModrinthClient {
     /// Creates a new instance of the Modrinth API client.
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self> {
         let mut headers = header::HeaderMap::new();
         headers.insert(
             header::USER_AGENT,
             header::HeaderValue::from_static("kmgr/0.1.0"),
         );
 
-        ModrinthClient {
-            client: Client::builder().default_headers(headers).build().unwrap(),
+        Ok(ModrinthClient {
+            client: Client::builder().default_headers(headers).build()?,
             base_url: "https://api.modrinth.com/v2".to_string(),
-        }
+        })
     }
 
     /// Performs an internal search query against the Modrinth API.
