@@ -73,8 +73,12 @@ impl ModrinthClient {
 
     /// Performs an internal search query against the Modrinth API.
     pub async fn search_mods_internal(&self, query: &str) -> Result<SearchResponse> {
-        let url = format!("{}/search?query={}", self.base_url, query);
-        let response = self.client.get(&url).send().await?.error_for_status()?;
+        let url = format!("{}/search", self.base_url);
+        let response = self.client.get(&url)
+            .query(&[("query", query)])
+            .send()
+            .await?
+            .error_for_status()?;
         Ok(response.json().await?)
     }
 

@@ -55,13 +55,14 @@ impl ModProvider for SourceForgeClient {
     /// Searches for projects on SourceForge matching the query.
     fn search<'a>(&'a self, query: &'a str) -> futures::future::BoxFuture<'a, Result<Vec<ProviderSearchResult>>> {
         Box::pin(async move {
-            match self.get_project(query).await {
+            let normalized_query = query.to_lowercase().replace(' ', "-");
+            match self.get_project(&normalized_query).await {
                 Ok(p) => {
                     let mut results = vec![];
                     results.push(ProviderSearchResult {
                         title: p.name,
                         description: p.shortdesc.unwrap_or_default(),
-                        id_or_slug: query.to_string(),
+                        id_or_slug: normalized_query,
                         extra: p.url,
                     });
                     Ok(results)
@@ -76,16 +77,17 @@ impl ModProvider for SourceForgeClient {
     /// Resolves a project to its latest download target.
     fn resolve<'a>(&'a self, project_name: &'a str, _mc_version: &'a str, _loader: &'a str) -> futures::future::BoxFuture<'a, Result<Vec<ResolvedTarget>>> {
         Box::pin(async move {
-            let _project = self.get_project(project_name).await?;
+            let normalized_name = project_name.to_lowercase().replace(' ', "-");
+            let _project = self.get_project(&normalized_name).await?;
             
-            let download_url = self.get_latest_download_url(project_name);
+            let download_url = self.get_latest_download_url(&normalized_name);
             
             Ok(vec![ResolvedTarget {
-                id: project_name.to_string(),
+                id: normalized_name.clone(),
                 name: _project.name,
                 download_url,
                 hash: None,
-                filename: format!("{}-latest.jar", project_name),
+                filename: format!("{}-latest.jar", normalized_name),
                 source: self.id().to_string(),
                 version: "latest".to_string(),
                 dependencies: vec![],
