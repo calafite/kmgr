@@ -117,13 +117,13 @@ pub async fn do_cmd() -> Result<()> {
         let has_current = !state.mods_folder.is_empty();
         if has_current {
             print!(
-                "   {} Mods folder (Type path, drag-and-drop, or press Enter for file browser) [current: {}]: ",
+                "   {} Mods folder (Type path, 'browse', or drag-and-drop) [current: {}]: ",
                 "?".yellow(),
                 state.mods_folder
             );
         } else {
             print!(
-                "   {} Mods folder (Type path, drag-and-drop, or press Enter for file browser): ",
+                "   {} Mods folder (Type path, 'browse', or drag-and-drop) [default: mods]: ",
                 "?".yellow()
             );
         }
@@ -132,6 +132,30 @@ pub async fn do_cmd() -> Result<()> {
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
         let mut val = input.trim().to_string();
+
+        if val.is_empty() {
+            if has_current {
+                mods_folder = state.mods_folder.clone();
+            } else {
+                mods_folder = "mods".to_string();
+            }
+            break;
+        }
+
+        if val.to_lowercase() == "browse" {
+            println!("      {} Opening file browser...", "ℹ".blue());
+            if let Some(folder) = rfd::AsyncFileDialog::new()
+                .set_title("Select Minecraft Mods Folder")
+                .pick_folder()
+                .await
+            {
+                val = folder.path().to_string_lossy().to_string();
+                println!("      {} Selected: {}", "✔".green(), val.cyan());
+            } else {
+                println!("      {} No folder selected. Please try again.", "⚠".yellow());
+                continue;
+            }
+        }
 
         if (val.starts_with('\'') && val.ends_with('\''))
             || (val.starts_with('"') && val.ends_with('"'))
@@ -142,25 +166,6 @@ pub async fn do_cmd() -> Result<()> {
         if val.starts_with("~/") {
             if let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
                 val = val.replacen('~', &home, 1);
-            }
-        }
-
-        if val.is_empty() {
-            println!("      {} Opening file browser...", "ℹ".blue());
-            if let Some(folder) = rfd::AsyncFileDialog::new()
-                .set_title("Select Minecraft Mods Folder")
-                .pick_folder()
-                .await
-            {
-                val = folder.path().to_string_lossy().to_string();
-                println!("      {} Selected: {}", "✔".green(), val.cyan());
-            } else if has_current {
-                mods_folder = state.mods_folder.clone();
-                break;
-            } else {
-                mods_folder = "mods".to_string();
-                println!("      {} No folder selected, defaulting to 'mods'", "ℹ".blue());
-                break;
             }
         }
 
