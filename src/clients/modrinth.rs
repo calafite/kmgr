@@ -4,7 +4,9 @@ use async_trait::async_trait;
 use reqwest::{Client, header};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
+use futures::stream::{self, StreamExt};
 
+#[derive(Clone)]
 pub struct ModrinthClient {
     client: Client,
     base_url: String,
@@ -189,64 +191,103 @@ impl ModProvider for ModrinthClient {
             };
 
         let mut resolved_versions: HashMap<String, Version> = HashMap::new();
-        let mut queue: Vec<(String, Option<String>)> =
-            vec![(actual_slug.to_string(), requested_version)];
         let mut seen_projects: HashSet<String> = HashSet::new();
         let mut project_names: HashMap<String, String> = HashMap::new();
         let mut project_deps: HashMap<String, Vec<String>> = HashMap::new();
 
         let mut root_project_id = None;
 
-        while let Some((current_req, specific_version)) = queue.pop() {
-            if seen_projects.contains(&current_req) {
-                continue;
+        let mut queue: Vec<(String, Option<String>)> =
+            vec![(actual_slug.to_string(), requested_version)];
+
+        let concurrency_limit = 5;
+
+        while !queue.is_empty() {
+            // Filter out already seen projects/slugs to avoid duplicate requests
+            let current_batch: Vec<(String, Option<String>)> = queue
+                .drain(..)
+                .filter(|(req, _)| !seen_projects.contains(req))
+                .collect();
+
+            if current_batch.is_empty() {
+                break;
             }
 
-            let project = match self.get_project(&current_req).await {
-                Ok(p) => p,
-                Err(_e) => {
-                    continue;
-                }
-            };
-
-            if root_project_id.is_none() {
-                root_project_id = Some(project.id.clone());
+            // Mark them as seen
+            for (req, _) in &current_batch {
+                seen_projects.insert(req.clone());
             }
 
-            seen_projects.insert(project.id.clone());
-            seen_projects.insert(project.slug.clone());
-            project_names.insert(project.id.clone(), project.title.clone());
+            let client_clone = self.clone();
+            let mc_version_str = mc_version.to_string();
+            let loader_str = loader.to_string();
 
-            let versions = self.get_versions(&project.id, mc_version, loader).await?;
+            let mut stream = stream::iter(current_batch)
+                .map(|(current_req, specific_version)| {
+                    let client = client_clone.clone();
+                    let mc_ver = mc_version_str.clone();
+                    let lod = loader_str.clone();
+                    async move {
+                        let project = match client.get_project(&current_req).await {
+                            Ok(p) => p,
+                            Err(_) => return None,
+                        };
 
-            let target_version = if let Some(ver) = specific_version {
-                versions
-                    .into_iter()
-                    .find(|v| v.version_number == ver || v.id == ver)
-            } else {
-                versions.into_iter().next()
-            };
+                        let versions = match client.get_versions(&project.id, &mc_ver, &lod).await {
+                            Ok(v) => v,
+                            Err(_) => return None,
+                        };
 
-            if let Some(target_version) = target_version {
-                let mut deps_list = Vec::new();
-                for dep in &target_version.dependencies {
-                    if dep.dependency_type == "required" {
-                        if let Some(dep_version_id) = &dep.version_id {
-                            if let Ok(v) = self.get_version(dep_version_id).await {
-                                queue.push((v.project_id.clone(), Some(v.id.clone())));
-                                deps_list.push(v.project_id.clone());
+                        let target_version = if let Some(ver) = specific_version {
+                            versions
+                                .into_iter()
+                                .find(|v| v.version_number == ver || v.id == ver)
+                        } else {
+                            versions.into_iter().next()
+                        };
+
+                        if let Some(target_version) = target_version {
+                            let mut next_deps = Vec::new();
+                            let mut deps_list = Vec::new();
+                            for dep in &target_version.dependencies {
+                                if dep.dependency_type == "required" {
+                                    if let Some(dep_version_id) = &dep.version_id {
+                                        if let Ok(v) = client.get_version(dep_version_id).await {
+                                            next_deps.push((v.project_id.clone(), Some(v.id.clone())));
+                                            deps_list.push(v.project_id.clone());
+                                        }
+                                    } else if let Some(dep_proj_id) = &dep.project_id {
+                                        next_deps.push((dep_proj_id.clone(), None));
+                                        deps_list.push(dep_proj_id.clone());
+                                    }
+                                }
                             }
-                        } else if let Some(dep_proj_id) = &dep.project_id {
-                            if !resolved_versions.contains_key(dep_proj_id) {
-                                queue.push((dep_proj_id.clone(), None));
-                            }
-                            deps_list.push(dep_proj_id.clone());
+                            Some((project, target_version, next_deps, deps_list))
+                        } else {
+                            None
                         }
                     }
-                }
+                })
+                .buffer_unordered(concurrency_limit);
 
-                project_deps.insert(project.id.clone(), deps_list);
-                resolved_versions.insert(project.id.clone(), target_version);
+            while let Some(res) = stream.next().await {
+                if let Some((project, target_version, next_deps, deps_list)) = res {
+                    if root_project_id.is_none() {
+                        root_project_id = Some(project.id.clone());
+                    }
+
+                    // Ensure we also mark the resolved project ID as seen so we don't resolve it again
+                    seen_projects.insert(project.id.clone());
+                    seen_projects.insert(project.slug.clone());
+
+                    project_names.insert(project.id.clone(), project.title.clone());
+                    project_deps.insert(project.id.clone(), deps_list);
+                    resolved_versions.insert(project.id.clone(), target_version);
+
+                    for dep_req in next_deps {
+                        queue.push(dep_req);
+                    }
+                }
             }
         }
 
