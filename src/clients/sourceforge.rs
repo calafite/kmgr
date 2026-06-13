@@ -1,7 +1,6 @@
-#![allow(dead_code)]
-
 use crate::core::provider::{ModProvider, ProviderSearchResult, ResolvedTarget};
 use anyhow::Result;
+use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
 
@@ -48,6 +47,7 @@ impl SourceForgeClient {
     }
 }
 
+#[async_trait]
 impl ModProvider for SourceForgeClient {
     /// Returns the unique identifier for the SourceForge provider.
     fn id(&self) -> &'static str {
@@ -79,11 +79,7 @@ impl ModProvider for SourceForgeClient {
 
             if let Some(slug_end) = current.find("/") {
                 let slug = current[..slug_end].to_string();
-                if slug.is_empty()
-                    || slug.contains('"')
-                    || slug.contains('?')
-                    || slug == "search"
-                {
+                if slug.is_empty() || slug.contains('"') || slug.contains('?') || slug == "search" {
                     continue;
                 }
 
