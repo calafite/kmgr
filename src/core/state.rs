@@ -118,10 +118,11 @@ impl KmgrState {
     /// backfills for outdated profile schemas or uninitialized default layouts.
     pub async fn load() -> Result<Self> {
         let config: ConfigDto = match fs::read_to_string("kmgr.toml").await {
-            Ok(content) => toml::from_str(&content).unwrap_or_else(|_| ConfigDto::default()),
-            Err(_) => ConfigDto::default(),
+            Ok(content) => toml::from_str(&content)
+                .map_err(|e| anyhow::anyhow!("Syntax error in kmgr.toml: {}", e))?,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => ConfigDto::default(),
+            Err(e) => anyhow::bail!("Failed to read kmgr.toml: {}", e),
         };
-
         let lock: LockDto = match fs::read_to_string("kmgr.lock").await {
             Ok(content) => toml::from_str(&content).unwrap_or_else(|_| LockDto::default()),
             Err(_) => LockDto::default(),
@@ -268,7 +269,7 @@ impl KmgrState {
     /// Safely acquires an exclusive filesystem lock before loading the state.
     /// The lock is automatically released when the returned `LockFile` goes out of scope.
     pub async fn lock_and_load() -> Result<(Self, LockFile)> {
-        let mut lock = LockFile::open("kmgr.lock")?;
+        let mut lock = LockFile::open(".kmgr.lock.lck")?;
         lock.lock()?;
         let state = Self::load().await?;
         Ok((state, lock))
