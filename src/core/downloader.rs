@@ -32,19 +32,17 @@ impl Downloader {
         let mut file = File::create(&output_path).await?;
 
         let is_sha1 = expected_hash.map_or(false, |h| h.len() == 40);
-        let mut sha1_hasher = Sha1::new();
-        let mut sha512_hasher = Sha512::new();
+        let mut sha1_hasher = (expected_hash.is_some() && is_sha1).then(Sha1::new);
+        let mut sha512_hasher = (expected_hash.is_some() && !is_sha1).then(Sha512::new);
 
         while let Some(chunk_result) = stream.next().await {
             let chunk = chunk_result?;
             file.write_all(&chunk).await?;
 
-            if expected_hash.is_some() {
-                if is_sha1 {
-                    sha1_hasher.update(&chunk);
-                } else {
-                    sha512_hasher.update(&chunk);
-                }
+            if let Some(ref mut hasher) = sha1_hasher {
+                hasher.update(&chunk);
+            } else if let Some(ref mut hasher) = sha512_hasher {
+                hasher.update(&chunk);
             }
         }
 
@@ -52,9 +50,9 @@ impl Downloader {
 
         if let Some(expected) = expected_hash {
             let actual_hex = if is_sha1 {
-                hex::encode(sha1_hasher.finalize())
+                hex::encode(sha1_hasher.expect("SHA1 hasher should be initialized").finalize())
             } else {
-                hex::encode(sha512_hasher.finalize())
+                hex::encode(sha512_hasher.expect("SHA512 hasher should be initialized").finalize())
             };
 
             if actual_hex != expected {
