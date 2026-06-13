@@ -1,6 +1,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use strsim::normalized_levenshtein;
 use tokio::fs;
 
 #[derive(Debug)]
@@ -209,7 +210,9 @@ impl KmgrState {
             let score = if name_lc.contains(&q) || id_lc.contains(&q) {
                 0.85
             } else {
-                fuzzy_similarity(&q, &name_lc).max(fuzzy_similarity(&q, &id_lc))
+                let name_score = normalized_levenshtein(&q, &name_lc);
+                let id_score = normalized_levenshtein(&q, &id_lc);
+                name_score.max(id_score)
             };
 
             if score >= 0.5 {
@@ -221,7 +224,6 @@ impl KmgrState {
 
         best.map(|(id, name, _)| (id, name))
     }
-
     /// Computes full deployment locations for packages.
     ///
     /// Takes a target filename and an activation flag. Interpolates the final
@@ -269,37 +271,4 @@ async fn atomic_write(path: &str, content: &str) -> Result<()> {
     fs::write(&tmp_path, content).await?;
     fs::rename(&tmp_path, path).await?;
     Ok(())
-}
-
-/// Computes the Levenshtein distance between two strings.
-fn levenshtein(a: &str, b: &str) -> usize {
-    let a: Vec<char> = a.chars().collect();
-    let b: Vec<char> = b.chars().collect();
-    let (m, n) = (a.len(), b.len());
-    let mut dp = vec![vec![0usize; n + 1]; m + 1];
-    for i in 0..=m {
-        dp[i][0] = i;
-    }
-    for j in 0..=n {
-        dp[0][j] = j;
-    }
-    for i in 1..=m {
-        for j in 1..=n {
-            dp[i][j] = if a[i - 1] == b[j - 1] {
-                dp[i - 1][j - 1]
-            } else {
-                1 + dp[i - 1][j].min(dp[i][j - 1]).min(dp[i - 1][j - 1])
-            };
-        }
-    }
-    dp[m][n]
-}
-
-/// Computes a fuzzy similarity score between 0.0 and 1.0 for two strings.
-fn fuzzy_similarity(a: &str, b: &str) -> f64 {
-    let max_len = a.len().max(b.len());
-    if max_len == 0 {
-        return 1.0;
-    }
-    1.0 - levenshtein(a, b) as f64 / max_len as f64
 }
