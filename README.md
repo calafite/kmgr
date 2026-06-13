@@ -2,7 +2,7 @@
 
 `kmgr` is a performant, lightweight, and robust CLI Minecraft Mod Manager written in Rust. Designed to facilitate search, installation, and deployment.
 
----
+***
 
 ## Features
 
@@ -11,7 +11,7 @@
 - **Integrity & Checksums**: Downloads are validated against cryptographic checksum signatures (`SHA-1` or `SHA-512`). Syncing scans current file structures and re-downloads mismatching or corrupted assets on the fly.
 - **Dependency Isolation**: Distinguishes between explicitly-requested mods and dependency-chained mods.
 
----
+***
 
 ## Core Configuration Architecture
 
@@ -55,7 +55,7 @@ dependencies = []
 enabled = true
 ```
 
----
+***
 
 ## Getting Started
 
@@ -69,14 +69,14 @@ cargo build --release
 
 The resulting executable is generated at `target/release/kmgr`. You can move it or symlink it into your system's `PATH`.
 
----
+***
 
 ## Interactive Wizard & Initialization
 
 `kmgr` offers two routes to establish configuration files:
 
 ### 1. Interactive Setup
-Run `setup` to build or update your configuration details interatively. It normalizes inputs and performs strict checks on path patterns and loaders.
+Run `setup` to build or update your configuration details interactively. It normalizes inputs and performs strict checks on path patterns and loaders.
 
 ```bash
 kmgr setup
@@ -84,7 +84,7 @@ kmgr setup
 
 **Validation & Safe Normalization Logic**:
 - **Minecraft Version**: Rejects empty strings, validates alphanumeric syntax, ensures numbers are present, and normalizes version string to lowercase.
-- **Mod Loader**: Restriced to validated, compatible loaders (`fabric`, `forge`, `neoforge`, `quilt`); let me know if you want any loaders added or add them yourself.
+- **Mod Loader**: Restricted to validated, compatible loaders (`fabric`, `forge`, `neoforge`, `quilt`); let me know if you want any loaders added or add them yourself.
 - **Mods Folder**: Validates paths to prevent dangerous characters (e.g. `*`, `?`, `"`, `<`), normalizes directory-slashes (converting Windows backslashes `\` to Unix forward slashes `/`), strips trailing slashes, and safely initializes directory trees.
 
 ### 2. Manual CLI Initialization
@@ -94,23 +94,23 @@ For immediate zero-interaction setups, initialize the workspace configuration sp
 kmgr init --mc-version 1.21.11 --loader fabric
 ```
 
----
+***
 
 ## Command Reference
 
 Every command (except configuration and search commands) validates that the environment has been successfully configured first.
 
 ### Search
-Query Modrinth or SourceForge databases for a specific mod query.
+Query Modrinth or SourceForge databases for a specific mod query. Quotes are optional.
 
 ```bash
-kmgr search "iris shadders" [-s <source>]
+kmgr search iris shaders [-s <source>]
 ```
 * **Options**:
   * `-s, --source`: The source target. Supported: `modrinth`, `sf` (SourceForge). Defaults to `modrinth`.
 
 ### Install
-Download and install specific mods by name or slug. `kmgr` will automatically download downstream dependencies recursively.
+Download and install specific mods by name or slug. `kmgr` will automatically download downstream dependencies recursively. Supports bulk operations.
 
 ```bash
 kmgr install sodium iris [-m <mc_version>] [-s <source>]
@@ -135,10 +135,10 @@ kmgr update --apply
   * `-a, --apply`: Actually triggers the download of the newer versions, switching physical `.jar` allocations.
 
 ### Remove
-Uninstall mods by name/slug.
+Uninstall mods by name/slug. Supports bulk operations.
 
 ```bash
-kmgr remove iris
+kmgr remove iris sodium
 ```
 
 ### Sync
@@ -165,16 +165,17 @@ kmgr list
 ```
 
 ### Enable / Disable
-Enables or disables individual folders/mod files quickly without destroying metadata or delete-and-redownload cycles. 
+Enables or disables individual folders/mod files quickly without destroying metadata or delete-and-redownload cycles. Supports bulk operations.
 
 ```bash
-kmgr disable sodium
-kmgr enable sodium
+kmgr disable sodium voicechat
+kmgr enable sodium voicechat
 ```
 * **Disabling**: Renames `mods/sodium.jar` to `mods/sodium.jar.disabled`.
 * **Enabling**: Reverts `mods/sodium.jar.disabled` back to `mods/sodium.jar`.
 * **Note:** Both `enable` and `disable` match mod names fuzzily for ease of use.
----
+
+***
 
 ## Profile-Switching Workflows
 
@@ -193,8 +194,8 @@ kmgr profile switch server-coop
 # Associate installed mods to the active profile
 kmgr profile add sodium voicechat
 
-# Remove registered mods from the active profile
-kmgr profile remove voicechat
+# Remove registered mods from the active profile (supports bulk)
+kmgr profile remove iris voicechat
 
 # Rename or delete profiles
 kmgr profile rename server-coop local-testing
