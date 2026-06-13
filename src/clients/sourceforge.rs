@@ -2,6 +2,7 @@ use crate::core::provider::{ModProvider, ProviderSearchResult, ResolvedTarget};
 use anyhow::Result;
 use async_trait::async_trait;
 use reqwest::Client;
+use scraper::{Html, Selector};
 use serde::Deserialize;
 
 pub struct SourceForgeClient {
@@ -66,65 +67,62 @@ impl ModProvider for SourceForgeClient {
             query.replace(' ', "+")
         );
 
-        let html = match self.client.get(&url).send().await {
-            Ok(resp) => resp.text().await.unwrap_or_default(),
-            Err(_) => String::new(),
-        };
-
         let mut results: Vec<ProviderSearchResult> = vec![];
-        let mut current = html.as_str();
 
-        while let Some(idx) = current.find("href=\"/projects/") {
-            current = &current[idx + 16..];
+        {
+            let html_text = match self.client.get(&url).send().await {
+                Ok(resp) => resp.text().await.unwrap_or_default(),
+                Err(_) => return Ok(vec![]),
+            };
 
-            if let Some(slug_end) = current.find("/") {
-                let slug = current[..slug_end].to_string();
-                if slug.is_empty() || slug.contains('"') || slug.contains('?') || slug == "search" {
-                    continue;
-                }
+            let document = Html::parse_document(&html_text);
 
-                if results.iter().any(|r| r.id_or_slug == slug) {
-                    continue;
-                }
+            let result_item_selector = Selector::parse("li").unwrap();
+            let link_selector = Selector::parse("a[href^='/projects/']").unwrap();
+            let title_selector = Selector::parse("[itemprop='name']").unwrap();
+            let desc_selector = Selector::parse("[itemprop='description']").unwrap();
 
-                let mut title = slug.clone();
-                let mut description = String::new();
+            for element in document.select(&result_item_selector) {
+                if let Some(link_element) = element.select(&link_selector).next() {
+                    if let Some(href) = link_element.value().attr("href") {
+                        // Extract slug from "/projects/my-mod-name/"
+                        let parts: Vec<&str> = href.split('/').collect();
+                        if parts.len() < 3 {
+                            continue;
+                        }
 
-                let block_end = current.find("</li>").unwrap_or(current.len().min(1500));
-                let block = &current[..block_end];
+                        let slug = parts[2].to_string();
+                        if slug.is_empty() || slug == "search" {
+                            continue;
+                        }
 
-                if let Some(title_start) = block.find("itemprop=\"name\">") {
-                    let temp = &block[title_start + 16..];
-                    if let Some(title_end) = temp.find('<') {
-                        title = temp[..title_end].trim().to_string();
+                        if results.iter().any(|r| r.id_or_slug == slug) {
+                            continue;
+                        }
+
+                        let title = element
+                            .select(&title_selector)
+                            .next()
+                            .map(|el| el.text().collect::<String>().trim().to_string())
+                            .unwrap_or_else(|| slug.clone());
+
+                        let description = element
+                            .select(&desc_selector)
+                            .next()
+                            .map(|el| el.text().collect::<String>().trim().to_string())
+                            .unwrap_or_default();
+
+                        results.push(ProviderSearchResult {
+                            title,
+                            description,
+                            id_or_slug: slug,
+                            extra: None,
+                        });
+
+                        if results.len() >= 10 {
+                            break;
+                        }
                     }
-                }
-
-                if let Some(desc_start) = block.find("itemprop=\"description\">") {
-                    let temp = &block[desc_start + 23..];
-                    if let Some(desc_end) = temp.find('<') {
-                        description = temp[..desc_end].trim().to_string();
-                    }
-                }
-
-                title = title
-                    .replace("&quot;", "\"")
-                    .replace("&#39;", "'")
-                    .replace("&amp;", "&");
-                description = description
-                    .replace("&quot;", "\"")
-                    .replace("&#39;", "'")
-                    .replace("&amp;", "&");
-
-                results.push(ProviderSearchResult {
-                    title,
-                    description,
-                    id_or_slug: slug,
-                    extra: None,
-                });
-
-                if results.len() >= 10 {
-                    break;
                 }
             }
         }
