@@ -27,7 +27,8 @@ pub enum Commands {
     /// Search for a mod across platforms
     Search {
         /// The query to search for
-        query: String,
+        #[arg(required = true)]
+        query: Vec<String>,
 
         /// Source to search in (modrinth, sf) - Defaults to modrinth
         #[arg(short, long)]
