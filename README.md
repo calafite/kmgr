@@ -174,6 +174,7 @@ kmgr enable sodium
 * **Disabling**: Renames `mods/sodium.jar` to `mods/sodium.jar.disabled`.
 * **Enabling**: Reverts `mods/sodium.jar.disabled` back to `mods/sodium.jar`.
 
+**Note:** Both `enable` and `disable` match mod names fuzzily for ease of use.
 ---
 
 ## Profile-Switching Workflows
