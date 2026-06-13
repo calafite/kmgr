@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::core::state::KmgrState;
+use anyhow::Result;
 use colored::Colorize;
 use std::collections::HashSet;
 use tokio::fs;
@@ -15,7 +15,7 @@ pub async fn do_cmd() -> Result<()> {
 
     let mut state = KmgrState::load().await?;
     state.check_initialized()?;
-    
+
     let mut reachable = HashSet::new();
     let mut queue = Vec::new();
 
@@ -27,7 +27,7 @@ pub async fn do_cmd() -> Result<()> {
             }
         }
     }
-    
+
     for (id, mod_info) in &state.installed_mods {
         if mod_info.is_explicit && !reachable.contains(id) {
             reachable.insert(id.clone());
@@ -58,7 +58,11 @@ pub async fn do_cmd() -> Result<()> {
         return Ok(());
     }
 
-    println!("{} Removing {} orphaned dependencies...\n", "".cyan().bold(), to_remove.len().to_string().yellow());
+    println!(
+        "{} Removing {} orphaned dependencies...\n",
+        "".cyan().bold(),
+        to_remove.len().to_string().yellow()
+    );
 
     let mut removed_count = 0;
     for (id, filename, name) in to_remove {
@@ -71,7 +75,11 @@ pub async fn do_cmd() -> Result<()> {
 
     if removed_count > 0 {
         state.save().await?;
-        println!("\n{} Successfully pruned {} dependencies.", "=>".green().bold(), removed_count);
+        println!(
+            "\n{} Successfully pruned {} dependencies.",
+            "=>".green().bold(),
+            removed_count
+        );
     }
 
     Ok(())

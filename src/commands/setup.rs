@@ -10,7 +10,7 @@ pub async fn do_cmd() -> Result<()> {
     println!("{} Starting interactive setup...", "".cyan().bold());
 
     let mut state = KmgrState::load().await?;
-    
+
     let mc_version;
     loop {
         let has_current = !state.default_mc_version.is_empty();
@@ -111,7 +111,7 @@ pub async fn do_cmd() -> Result<()> {
             );
         }
     }
-    
+
     let mods_folder;
     loop {
         let has_current = !state.mods_folder.is_empty();

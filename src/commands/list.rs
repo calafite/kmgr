@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::core::state::KmgrState;
+use anyhow::Result;
 use colored::Colorize;
 
 /// Prints the currently tracked packages.
@@ -9,9 +9,15 @@ use colored::Colorize;
 pub async fn do_cmd() -> Result<()> {
     let state = KmgrState::load().await?;
     state.check_initialized()?;
-    
+
     let active = state.active_profile.clone();
-    println!("{} Installed mods (Profile: {}, Minecraft {}, Loader: {}):\n", "".cyan().bold(), active.green(), state.default_mc_version.yellow(), state.mod_loader.magenta());
+    println!(
+        "{} Installed mods (Profile: {}, Minecraft {}, Loader: {}):\n",
+        "".cyan().bold(),
+        active.green(),
+        state.default_mc_version.yellow(),
+        state.mod_loader.magenta()
+    );
 
     if state.installed_mods.is_empty() {
         println!("   No mods installed.");
@@ -40,8 +46,11 @@ pub async fn do_cmd() -> Result<()> {
             mod_info.name.bright_black()
         };
 
-        println!("   - {} {}{}{}{}", name_fmt, version_fmt, src_fmt, type_fmt, status_fmt);
+        println!(
+            "   - {} {}{}{}{}",
+            name_fmt, version_fmt, src_fmt, type_fmt, status_fmt
+        );
     }
-    
+
     Ok(())
 }

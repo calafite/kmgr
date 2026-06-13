@@ -12,7 +12,12 @@ pub async fn do_cmd(query: String, source_opt: Option<String>) -> Result<()> {
         None => registry.get_default()?,
     };
 
-    println!("{} Searching {} for '{}'...\n", "".cyan().bold(), provider.display_name().magenta(), query.yellow());
+    println!(
+        "{} Searching {} for '{}'...\n",
+        "".cyan().bold(),
+        provider.display_name().magenta(),
+        query.yellow()
+    );
 
     match provider.search(&query).await {
         Ok(results) => {
@@ -20,15 +25,29 @@ pub async fn do_cmd(query: String, source_opt: Option<String>) -> Result<()> {
                 println!("   No results found.");
             } else {
                 for hit in results {
-                    let extra_label = hit.extra.map(|e| format!(" [{}]", e)).unwrap_or_default().bright_black();
-                    println!("  {} {}{}", hit.title.cyan().bold(), hit.id_or_slug.bright_black(), extra_label);
+                    let extra_label = hit
+                        .extra
+                        .map(|e| format!(" [{}]", e))
+                        .unwrap_or_default()
+                        .bright_black();
+                    println!(
+                        "  {} {}{}",
+                        hit.title.cyan().bold(),
+                        hit.id_or_slug.bright_black(),
+                        extra_label
+                    );
                     println!("    {}", hit.description.white());
                     println!();
                 }
             }
         }
         Err(e) => {
-            eprintln!("{} Failed to search {}: {}", "Error:".red().bold(), provider.display_name(), e);
+            eprintln!(
+                "{} Failed to search {}: {}",
+                "Error:".red().bold(),
+                provider.display_name(),
+                e
+            );
         }
     }
 

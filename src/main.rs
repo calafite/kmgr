@@ -1,6 +1,6 @@
 mod cli;
-mod commands;
 mod clients;
+mod commands;
 mod core;
 
 use anyhow::Result;

@@ -50,9 +50,17 @@ impl Downloader {
 
         if let Some(expected) = expected_hash {
             let actual_hex = if is_sha1 {
-                hex::encode(sha1_hasher.expect("SHA1 hasher should be initialized").finalize())
+                hex::encode(
+                    sha1_hasher
+                        .expect("SHA1 hasher should be initialized")
+                        .finalize(),
+                )
             } else {
-                hex::encode(sha512_hasher.expect("SHA512 hasher should be initialized").finalize())
+                hex::encode(
+                    sha512_hasher
+                        .expect("SHA512 hasher should be initialized")
+                        .finalize(),
+                )
             };
 
             if actual_hex != expected {
