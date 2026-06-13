@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use strsim::normalized_levenshtein;
+use strsim::jaro_winkler;
 use tokio::fs;
 
 #[derive(Debug)]
@@ -210,8 +210,8 @@ impl KmgrState {
             let score = if name_lc.contains(&q) || id_lc.contains(&q) {
                 0.85
             } else {
-                let name_score = normalized_levenshtein(&q, &name_lc);
-                let id_score = normalized_levenshtein(&q, &id_lc);
+                let name_score = jaro_winkler(&q, &name_lc);
+                let id_score = jaro_winkler(&q, &id_lc);
                 name_score.max(id_score)
             };
 
