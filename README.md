@@ -28,7 +28,7 @@ In name of versatility, `kmgr` must be used exclusively within the setup's direc
 This file defines global settings, profiles, and active configurations. It can be modified manually or built via the interactive `setup` wizard.
 
 ```toml
-default_mc_version = "1.20.4"
+default_mc_version = "26.1"
 mod_loader = "fabric"
 mods_folder = "/home/walt/.mods"
 active_profile = "chiappetta-server"
