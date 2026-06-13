@@ -1,6 +1,6 @@
 use anyhow::Result;
 use futures::StreamExt;
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use reqwest::Client;
 use sha1::Sha1;
 use sha2::{Digest, Sha512};
@@ -10,8 +10,10 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
 /// A utility for downloading files from remote URLs with streaming and hash verification.
+#[derive(Clone)]
 pub struct Downloader {
     client: Client,
+    mp: MultiProgress,
 }
 
 impl Downloader {
@@ -19,6 +21,7 @@ impl Downloader {
     pub fn new() -> Self {
         Self {
             client: Client::new(),
+            mp: MultiProgress::new(),
         }
     }
 
@@ -50,7 +53,7 @@ impl Downloader {
         let total_size = response.content_length().unwrap_or(0);
 
         let pb = if total_size > 0 {
-            let pb = ProgressBar::new(total_size);
+            let pb = self.mp.add(ProgressBar::new(total_size));
             pb.set_style(
                 ProgressStyle::default_bar()
                     .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
@@ -59,7 +62,7 @@ impl Downloader {
             );
             Some(pb)
         } else {
-            let pb = ProgressBar::new_spinner();
+            let pb = self.mp.add(ProgressBar::new_spinner());
             pb.set_style(
                 ProgressStyle::default_spinner()
                     .template(
