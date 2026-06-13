@@ -1,4 +1,5 @@
 use anyhow::Result;
+use fslock::LockFile;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use strsim::jaro_winkler;
@@ -262,6 +263,15 @@ impl KmgrState {
         atomic_write("kmgr.lock", &lock_out).await?;
 
         Ok(())
+    }
+
+    /// Safely acquires an exclusive filesystem lock before loading the state.
+    /// The lock is automatically released when the returned `LockFile` goes out of scope.
+    pub async fn lock_and_load() -> Result<(Self, LockFile)> {
+        let mut lock = LockFile::open("kmgr.lock")?;
+        lock.lock()?;
+        let state = Self::load().await?;
+        Ok((state, lock))
     }
 }
 

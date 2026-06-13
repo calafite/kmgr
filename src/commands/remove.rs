@@ -10,10 +10,7 @@ use tokio::fs;
 /// from the disk, unregisters it from all active profiles, and drops it from
 /// the local state configuration.
 pub async fn do_cmd(mod_name: String) -> Result<()> {
-    let mut _lock = fslock::LockFile::open("kmgr.flock")?;
-    _lock.lock()?;
-
-    let mut state = KmgrState::load().await?;
+    let (mut state, _lock) = KmgrState::lock_and_load().await?;
     state.check_initialized()?;
 
     if let Some((id, matched_name)) = state.find_mod_id_fuzzy(&mod_name) {

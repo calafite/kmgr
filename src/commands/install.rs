@@ -16,10 +16,8 @@ pub async fn do_cmd(
     mc_version: Option<String>,
     source_opt: Option<String>,
 ) -> Result<()> {
-    let mut _lock = fslock::LockFile::open("kmgr.flock")?;
-    _lock.lock()?;
+    let (mut state, _lock) = KmgrState::lock_and_load().await?;
 
-    let mut state = KmgrState::load().await?;
     state.check_initialized()?;
     let version_str = mc_version.unwrap_or_else(|| state.default_mc_version.clone());
 

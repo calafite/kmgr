@@ -9,10 +9,7 @@ use tokio::fs;
 ///
 /// Takes a ProfileCommands enum variant and routes it to the correct handler.
 pub async fn do_cmd(command: ProfileCommands) -> Result<()> {
-    let mut _lock = fslock::LockFile::open("kmgr.flock")?;
-    _lock.lock()?;
-
-    let state = KmgrState::load().await?;
+    let (mut state, _lock) = KmgrState::lock_and_load().await?;
     state.check_initialized()?;
 
     match command {

@@ -8,10 +8,7 @@ use tokio::fs;
 /// Renames the target artifact by appending `.disabled` to its filename and
 /// updates the local state to prevent it from loading.
 pub async fn do_cmd(mod_name: String) -> Result<()> {
-    let mut _lock = fslock::LockFile::open("kmgr.flock")?;
-    _lock.lock()?;
-
-    let mut state = KmgrState::load().await?;
+    let (mut state, _lock) = KmgrState::lock_and_load().await?;
     state.check_initialized()?;
 
     if let Some((id, matched_name)) = state.find_mod_id_fuzzy(&mod_name) {
