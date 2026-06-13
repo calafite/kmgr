@@ -1,9 +1,11 @@
 use anyhow::Result;
 use futures::StreamExt;
+use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use sha1::Sha1;
 use sha2::{Digest, Sha512};
 use std::path::Path;
+use std::time::Duration;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
@@ -20,14 +22,54 @@ impl Downloader {
         }
     }
 
-    /// Downloads a file from a URL to a local path, streaming chunks and verifying its hash on the fly.
+    /// Downloads a file from a URL to a local path, streaming chunks, showing progress, and verifying its hash.
     pub async fn download_file<P: AsRef<Path>>(
         &self,
         url: &str,
         output_path: P,
         expected_hash: Option<&str>,
     ) -> Result<()> {
-        let response = self.client.get(url).send().await?.error_for_status()?;
+        let mut attempts = 0;
+        let max_attempts = 3;
+
+        let response = loop {
+            let resp = self.client.get(url).send().await?;
+
+            if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+                if attempts >= max_attempts {
+                    anyhow::bail!("Download rate limit exceeded.");
+                }
+                tokio::time::sleep(Duration::from_secs(2_u64.pow(attempts))).await;
+                attempts += 1;
+                continue;
+            }
+
+            break resp.error_for_status()?;
+        };
+
+        let total_size = response.content_length().unwrap_or(0);
+
+        let pb = if total_size > 0 {
+            let pb = ProgressBar::new(total_size);
+            pb.set_style(
+                ProgressStyle::default_bar()
+                    .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
+                    .unwrap()
+                    .progress_chars("#>-"),
+            );
+            Some(pb)
+        } else {
+            let pb = ProgressBar::new_spinner();
+            pb.set_style(
+                ProgressStyle::default_spinner()
+                    .template(
+                        "{spinner:.green} [{elapsed_precise}] {bytes} downloaded ({bytes_per_sec})",
+                    )
+                    .unwrap(),
+            );
+            Some(pb)
+        };
+
         let mut stream = response.bytes_stream();
         let mut file = File::create(&output_path).await?;
 
@@ -39,6 +81,10 @@ impl Downloader {
             let chunk = chunk_result?;
             file.write_all(&chunk).await?;
 
+            if let Some(ref pb) = pb {
+                pb.inc(chunk.len() as u64);
+            }
+
             if let Some(ref mut hasher) = sha1_hasher {
                 hasher.update(&chunk);
             } else if let Some(ref mut hasher) = sha512_hasher {
@@ -47,6 +93,10 @@ impl Downloader {
         }
 
         file.flush().await?;
+
+        if let Some(ref pb) = pb {
+            pb.finish_and_clear();
+        }
 
         if let Some(expected) = expected_hash {
             let actual_hex = if is_sha1 {

@@ -68,17 +68,49 @@ impl ModrinthClient {
         })
     }
 
+    /// Handles GET requests with automatic retries for HTTP 429 Too Many Requests
+    async fn get_with_retry(&self, url: &str) -> Result<reqwest::Response> {
+        let mut attempts = 0;
+        let max_attempts = 5;
+
+        loop {
+            let response = self.client.get(url).send().await?;
+
+            if response.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+                if attempts >= max_attempts {
+                    anyhow::bail!("Modrinth API rate limit exceeded. Please try again later.");
+                }
+
+                let delay_secs = response
+                    .headers()
+                    .get("x-ratelimit-reset")
+                    .and_then(|h| h.to_str().ok())
+                    .and_then(|s| s.parse::<u64>().ok())
+                    .unwrap_or_else(|| 2_u64.pow(attempts));
+
+                tokio::time::sleep(tokio::time::Duration::from_secs(delay_secs + 1)).await;
+                attempts += 1;
+                continue;
+            }
+
+            return Ok(response);
+        }
+    }
+
     pub async fn search_mods_internal(&self, query: &str) -> Result<SearchResponse> {
         let mut url = reqwest::Url::parse(&format!("{}/search", self.base_url))?;
         url.query_pairs_mut().append_pair("query", query);
 
-        let response = self.client.get(url).send().await?.error_for_status()?;
+        let response = self
+            .get_with_retry(url.as_str())
+            .await?
+            .error_for_status()?;
         Ok(response.json().await?)
     }
 
     pub async fn get_project(&self, id_or_slug: &str) -> Result<Project> {
         let url = format!("{}/project/{}", self.base_url, id_or_slug);
-        let response = self.client.get(&url).send().await?;
+        let response = self.get_with_retry(&url).await?;
 
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             anyhow::bail!("Project '{}' not found on Modrinth", id_or_slug);
@@ -102,14 +134,16 @@ impl ModrinthClient {
             .append_pair("game_versions", &game_versions)
             .append_pair("loaders", &loaders);
 
-        let response = self.client.get(url).send().await?.error_for_status()?;
-
+        let response = self
+            .get_with_retry(url.as_str())
+            .await?
+            .error_for_status()?;
         Ok(response.json().await?)
     }
 
     pub async fn get_version(&self, version_id: &str) -> Result<Version> {
         let url = format!("{}/version/{}", self.base_url, version_id);
-        let response = self.client.get(&url).send().await?.error_for_status()?;
+        let response = self.get_with_retry(&url).await?.error_for_status()?;
         Ok(response.json().await?)
     }
 }
