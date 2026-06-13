@@ -1,6 +1,7 @@
 use crate::core::state::KmgrState;
 use anyhow::Result;
 use colored::Colorize;
+use futures::stream::{self, StreamExt};
 
 /// Audits and applies package updates.
 ///
@@ -35,38 +36,39 @@ pub async fn do_cmd(apply: bool) -> Result<()> {
 
     let installed_mods = state.installed_mods.clone();
 
-    let mut resolve_futures = Vec::new();
     let default_mc_version = state.default_mc_version.clone();
     let mod_loader = state.mod_loader.clone();
 
-    for (id, mod_info) in &installed_mods {
-        let registry_clone = registry.clone();
-        let id_clone = id.clone();
-        let source = mod_info.source.clone();
-        let mc_version = default_mc_version.clone();
-        let loader = mod_loader.clone();
+    let concurrency_limit = 10;
+    let resolved_results: Vec<_> = stream::iter(installed_mods.clone())
+        .map(|(id, mod_info)| {
+            let registry_clone = registry.clone();
+            let id_clone = id.clone();
+            let source = mod_info.source.clone();
+            let mc_version = default_mc_version.clone();
+            let loader = mod_loader.clone();
 
-        resolve_futures.push(tokio::spawn(async move {
-            let mut latest_version = None;
-            let mut update_target = None;
-            if let Ok(provider) = registry_clone.get(&source) {
-                if let Ok(targets) = provider.resolve(&id_clone, &mc_version, &loader).await {
-                    if let Some(target) = targets.into_iter().next() {
-                        latest_version = Some(target.version.clone());
-                        update_target = Some(target);
+            async move {
+                let mut latest_version = None;
+                let mut update_target = None;
+                if let Ok(provider) = registry_clone.get(&source) {
+                    if let Ok(targets) = provider.resolve(&id_clone, &mc_version, &loader).await {
+                        if let Some(target) = targets.into_iter().next() {
+                            latest_version = Some(target.version.clone());
+                            update_target = Some(target);
+                        }
                     }
                 }
+                (id_clone, latest_version, update_target)
             }
-            (id_clone, latest_version, update_target)
-        }));
-    }
+        })
+        .buffer_unordered(concurrency_limit)
+        .collect()
+        .await;
 
-    let resolved_results = futures::future::join_all(resolve_futures).await;
     let mut resolutions = std::collections::HashMap::new();
-    for res in resolved_results {
-        if let Ok((id, latest_version, update_target)) = res {
-            resolutions.insert(id, (latest_version, update_target));
-        }
+    for (id, latest_version, update_target) in resolved_results {
+        resolutions.insert(id, (latest_version, update_target));
     }
 
     for (id, mod_info) in installed_mods {
