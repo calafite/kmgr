@@ -38,8 +38,16 @@ pub async fn do_cmd(mod_name: String) -> Result<()> {
         let enabled_path = state.get_mod_path(&current_filename, true);
         let disabled_path = state.get_mod_path(&current_filename, false);
 
-        if tokio::fs::try_exists(&enabled_path).await? {
-            if let Err(e) = fs::rename(&enabled_path, &disabled_path).await {
+        match fs::rename(&enabled_path, &disabled_path).await {
+            Ok(_) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                println!(
+                    "{} Warning: {} was not found, but marking as disabled in config.",
+                    "⚠".yellow(),
+                    enabled_path.bright_black()
+                );
+            }
+            Err(e) => {
                 eprintln!(
                     "{} Failed to disable mod (rename failed): {}",
                     "Error:".red().bold(),
@@ -47,12 +55,6 @@ pub async fn do_cmd(mod_name: String) -> Result<()> {
                 );
                 return Err(anyhow!("Rename failed"));
             }
-        } else {
-            println!(
-                "{} Warning: {} was not found, but marking as disabled in config.",
-                "⚠".yellow(),
-                enabled_path.bright_black()
-            );
         }
 
         if let Some(mod_info) = state.installed_mods.get_mut(&id) {

@@ -219,15 +219,17 @@ async fn switch(name: String) -> Result<()> {
             let enabled_path = state.get_mod_path(&filename, true);
 
             if let Some(info) = state.installed_mods.get_mut(&id) {
-                if tokio::fs::try_exists(&disabled_path).await? {
-                    if let Err(e) = fs::rename(&disabled_path, &enabled_path).await {
-                        eprintln!("   {} Failed to enable {}: {}", "✗".red(), info.name, e);
-                    } else {
+                match fs::rename(&disabled_path, &enabled_path).await {
+                    Ok(_) => {
                         println!("   {} Enabled {}", "+".green(), info.name);
                         info.enabled = true;
                     }
-                } else {
-                    info.enabled = true;
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                        info.enabled = true;
+                    }
+                    Err(e) => {
+                        eprintln!("   {} Failed to enable {}: {}", "✗".red(), info.name, e);
+                    }
                 }
             }
         }
@@ -241,15 +243,17 @@ async fn switch(name: String) -> Result<()> {
             let disabled_path = state.get_mod_path(&filename, false);
 
             if let Some(info) = state.installed_mods.get_mut(&id) {
-                if tokio::fs::try_exists(&enabled_path).await? {
-                    if let Err(e) = fs::rename(&enabled_path, &disabled_path).await {
-                        eprintln!("   {} Failed to disable {}: {}", "✗".red(), info.name, e);
-                    } else {
+                match fs::rename(&enabled_path, &disabled_path).await {
+                    Ok(_) => {
                         println!("   {} Disabled {}", "-".red(), info.name);
                         info.enabled = false;
                     }
-                } else {
-                    info.enabled = false;
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                        info.enabled = false;
+                    }
+                    Err(e) => {
+                        eprintln!("   {} Failed to disable {}: {}", "✗".red(), info.name, e);
+                    }
                 }
             }
         }
