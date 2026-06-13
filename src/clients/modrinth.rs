@@ -71,11 +71,12 @@ impl ModrinthClient {
 
     /// Performs an internal search query against the Modrinth API.
     pub async fn search_mods_internal(&self, query: &str) -> Result<SearchResponse> {
-        let url = format!("{}/search", self.base_url);
+        let mut url = reqwest::Url::parse(&format!("{}/search", self.base_url))?;
+        url.query_pairs_mut().append_pair("query", query);
+
         let response = self
             .client
-            .get(&url)
-            .query(&[("query", query)])
+            .get(url)
             .send()
             .await?
             .error_for_status()?;
@@ -103,12 +104,15 @@ impl ModrinthClient {
     ) -> Result<Vec<Version>> {
         let game_versions = format!("[\"{}\"]", mc_version);
         let loaders = format!("[\"{}\"]", loader);
-        let url = format!("{}/project/{}/version", self.base_url, project_id);
+        
+        let mut url = reqwest::Url::parse(&format!("{}/project/{}/version", self.base_url, project_id))?;
+        url.query_pairs_mut()
+            .append_pair("game_versions", &game_versions)
+            .append_pair("loaders", &loaders);
 
         let response = self
             .client
-            .get(&url)
-            .query(&[("game_versions", &game_versions), ("loaders", &loaders)])
+            .get(url)
             .send()
             .await?
             .error_for_status()?;
