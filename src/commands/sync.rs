@@ -3,9 +3,9 @@ use crate::core::state::KmgrState;
 use crate::core::utils::*;
 use anyhow::Result;
 use colored::Colorize;
+use futures::stream::{self, StreamExt};
 use std::path::Path;
 use std::sync::Arc;
-use futures::stream::{self, StreamExt};
 
 /// Verifies disk artifacts against the application state configuration.
 ///
@@ -48,8 +48,12 @@ pub async fn do_cmd() -> Result<()> {
                 let mut download_success = false;
                 let mut error_msg = None;
 
-                // Resolve destination path manually to avoid cloning KmgrState
-                let mut dest_path = Path::new(&mods_folder_ref).join(&mod_info_clone.filename);
+                let safe_filename = Path::new(&mod_info_clone.filename)
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("unknown.jar");
+                let mut dest_path = Path::new(&mods_folder_ref).join(safe_filename);
+
                 if !mod_info_clone.enabled {
                     let mut ext = dest_path.into_os_string();
                     ext.push(".disabled");

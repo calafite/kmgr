@@ -2,10 +2,10 @@ use crate::core::downloader::Downloader;
 use crate::core::state::{InstalledMod, KmgrState};
 use anyhow::Result;
 use colored::Colorize;
+use futures::stream::{self, StreamExt};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::fs;
-use futures::stream::{self, StreamExt};
 
 struct InstallTaskResult {
     id: String,
@@ -15,7 +15,9 @@ struct InstallTaskResult {
 }
 
 enum InstallStatus {
-    AlreadyInstalled { change_to_explicit: bool },
+    AlreadyInstalled {
+        change_to_explicit: bool,
+    },
     Downloaded {
         installed_mod: InstalledMod,
         old_filename_to_remove: Option<String>,
@@ -77,129 +79,147 @@ pub async fn do_cmd(
             let concurrency_limit = 10;
             let mods_folder = state.mods_folder.clone();
 
-            let install_tasks: Vec<Result<InstallTaskResult>> = stream::iter(
-                versions_to_install.into_iter().enumerate()
-            )
-            .map(|(i, target)| {
-                let is_explicit = i == 0;
-                let downloader = downloader.clone();
-                let existing_mod = state.installed_mods.get(&target.id).cloned();
-                let dest_path = Path::new(&mods_folder).join(&target.filename).to_string_lossy().to_string();
+            let install_tasks: Vec<Result<InstallTaskResult>> =
+                stream::iter(versions_to_install.into_iter().enumerate())
+                    .map(|(i, target)| {
+                        let is_explicit = i == 0;
+                        let downloader = downloader.clone();
+                        let existing_mod = state.installed_mods.get(&target.id).cloned();
+                        let safe_filename = Path::new(&target.filename)
+                            .file_name()
+                            .and_then(|name| name.to_str())
+                            .unwrap_or("unknown.jar");
+                        let dest_path = Path::new(&mods_folder)
+                            .join(safe_filename)
+                            .to_string_lossy()
+                            .to_string();
 
-                async move {
-                    if let Some(ref existing) = existing_mod {
-                        if existing.version == target.version {
-                            let change_to_explicit = is_explicit && !existing.is_explicit;
-                            return Ok(InstallTaskResult {
+                        async move {
+                            if let Some(ref existing) = existing_mod {
+                                if existing.version == target.version {
+                                    let change_to_explicit = is_explicit && !existing.is_explicit;
+                                    return Ok(InstallTaskResult {
+                                        id: target.id.clone(),
+                                        target,
+                                        is_explicit,
+                                        status: InstallStatus::AlreadyInstalled {
+                                            change_to_explicit,
+                                        },
+                                    });
+                                }
+                            }
+
+                            println!(
+                                "    {} Downloading {}",
+                                "↓".blue(),
+                                target.filename.bright_black()
+                            );
+
+                            downloader
+                                .download_file(
+                                    &target.download_url,
+                                    &dest_path,
+                                    target.hash.as_deref(),
+                                )
+                                .await?;
+
+                            let old_filename_to_remove = if let Some(ref existing) = existing_mod {
+                                if existing.filename != target.filename {
+                                    Some(existing.filename.clone())
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+
+                            let installed_mod = InstalledMod {
+                                name: target.name.clone(),
+                                version: target.version.clone(),
+                                source: target.source.clone(),
+                                filename: target.filename.clone(),
+                                download_url: target.download_url.clone(),
+                                hash: target.hash.clone(),
+                                is_explicit,
+                                dependencies: target.dependencies.clone(),
+                                enabled: true,
+                            };
+
+                            Ok(InstallTaskResult {
                                 id: target.id.clone(),
                                 target,
                                 is_explicit,
-                                status: InstallStatus::AlreadyInstalled { change_to_explicit },
-                            });
+                                status: InstallStatus::Downloaded {
+                                    installed_mod,
+                                    old_filename_to_remove,
+                                },
+                            })
                         }
-                    }
-
-                    println!(
-                        "    {} Downloading {}",
-                        "↓".blue(),
-                        target.filename.bright_black()
-                    );
-
-                    downloader
-                        .download_file(&target.download_url, &dest_path, target.hash.as_deref())
-                        .await?;
-
-                    let old_filename_to_remove = if let Some(ref existing) = existing_mod {
-                        if existing.filename != target.filename {
-                            Some(existing.filename.clone())
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    };
-
-                    let installed_mod = InstalledMod {
-                        name: target.name.clone(),
-                        version: target.version.clone(),
-                        source: target.source.clone(),
-                        filename: target.filename.clone(),
-                        download_url: target.download_url.clone(),
-                        hash: target.hash.clone(),
-                        is_explicit,
-                        dependencies: target.dependencies.clone(),
-                        enabled: true,
-                    };
-
-                    Ok(InstallTaskResult {
-                        id: target.id.clone(),
-                        target,
-                        is_explicit,
-                        status: InstallStatus::Downloaded {
-                            installed_mod,
-                            old_filename_to_remove,
-                        },
                     })
-                }
-            })
-            .buffer_unordered(concurrency_limit)
-            .collect()
-            .await;
+                    .buffer_unordered(concurrency_limit)
+                    .collect()
+                    .await;
 
             let mut has_errors = false;
 
             for res in install_tasks {
                 match res {
-                    Ok(task_result) => {
-                        match task_result.status {
-                            InstallStatus::AlreadyInstalled { change_to_explicit } => {
-                                println!(
-                                    "    {} {} is already installed (v{}){}",
-                                    "=".bright_black(),
-                                    task_result.target.name.cyan(),
-                                    task_result.target.version,
-                                    if change_to_explicit {
-                                        " - marked as explicit".bright_black().to_string()
-                                    } else {
-                                        "".to_string()
-                                    }
-                                );
-
+                    Ok(task_result) => match task_result.status {
+                        InstallStatus::AlreadyInstalled { change_to_explicit } => {
+                            println!(
+                                "    {} {} is already installed (v{}){}",
+                                "=".bright_black(),
+                                task_result.target.name.cyan(),
+                                task_result.target.version,
                                 if change_to_explicit {
-                                    if let Some(existing) = state.installed_mods.get_mut(&task_result.id) {
-                                        existing.is_explicit = true;
-                                    }
-                                    if let Some(profile) = state.profiles.get_mut(&state.active_profile) {
-                                        if !profile.contains(&task_result.id) {
-                                            profile.push(task_result.id.clone());
-                                        }
-                                    }
+                                    " - marked as explicit".bright_black().to_string()
+                                } else {
+                                    "".to_string()
                                 }
-                            }
-                            InstallStatus::Downloaded {
-                                installed_mod,
-                                old_filename_to_remove,
-                            } => {
-                                println!("      {} Done", "✔".green());
+                            );
 
-                                if let Some(old_filename) = old_filename_to_remove {
-                                    let enabled = state.installed_mods.get(&task_result.id).map(|m| m.enabled).unwrap_or(true);
-                                    let old_file_path = state.get_mod_path(&old_filename, enabled);
-                                    let _ = tokio::fs::remove_file(&old_file_path).await;
+                            if change_to_explicit {
+                                if let Some(existing) =
+                                    state.installed_mods.get_mut(&task_result.id)
+                                {
+                                    existing.is_explicit = true;
                                 }
-
-                                if task_result.is_explicit {
-                                    if let Some(profile) = state.profiles.get_mut(&state.active_profile) {
-                                        if !profile.contains(&task_result.id) {
-                                            profile.push(task_result.id.clone());
-                                        }
+                                if let Some(profile) = state.profiles.get_mut(&state.active_profile)
+                                {
+                                    if !profile.contains(&task_result.id) {
+                                        profile.push(task_result.id.clone());
                                     }
                                 }
-
-                                state.installed_mods.insert(task_result.id, installed_mod);
                             }
                         }
-                    }
+                        InstallStatus::Downloaded {
+                            installed_mod,
+                            old_filename_to_remove,
+                        } => {
+                            println!("      {} Done", "✔".green());
+
+                            if let Some(old_filename) = old_filename_to_remove {
+                                let enabled = state
+                                    .installed_mods
+                                    .get(&task_result.id)
+                                    .map(|m| m.enabled)
+                                    .unwrap_or(true);
+                                let old_file_path = state.get_mod_path(&old_filename, enabled);
+                                let _ = tokio::fs::remove_file(&old_file_path).await;
+                            }
+
+                            if task_result.is_explicit {
+                                if let Some(profile) = state.profiles.get_mut(&state.active_profile)
+                                {
+                                    if !profile.contains(&task_result.id) {
+                                        profile.push(task_result.id.clone());
+                                    }
+                                }
+                            }
+
+                            state.installed_mods.insert(task_result.id, installed_mod);
+                        }
+                    },
                     Err(e) => {
                         eprintln!("      {} Failed: {}", "✗".red(), e);
                         has_errors = true;
@@ -210,7 +230,10 @@ pub async fn do_cmd(
             state.save().await?;
 
             if has_errors {
-                println!("\n{} Installation completed with errors.", "⚠".yellow().bold());
+                println!(
+                    "\n{} Installation completed with errors.",
+                    "⚠".yellow().bold()
+                );
             } else {
                 println!("\n{} Installation complete.", "".green().bold());
             }

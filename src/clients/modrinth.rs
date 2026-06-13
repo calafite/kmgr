@@ -1,10 +1,10 @@
 use crate::core::provider::{ModProvider, ProviderSearchResult, ResolvedTarget};
 use anyhow::Result;
 use async_trait::async_trait;
+use futures::stream::{self, StreamExt};
 use reqwest::{Client, header};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use futures::stream::{self, StreamExt};
 
 #[derive(Clone)]
 pub struct ModrinthClient {
@@ -251,7 +251,8 @@ impl ModProvider for ModrinthClient {
                                 if dep.dependency_type == "required" {
                                     if let Some(dep_version_id) = &dep.version_id {
                                         if let Ok(v) = client.get_version(dep_version_id).await {
-                                            next_deps.push((v.project_id.clone(), Some(v.id.clone())));
+                                            next_deps
+                                                .push((v.project_id.clone(), Some(v.id.clone())));
                                             deps_list.push(v.project_id.clone());
                                         }
                                     } else if let Some(dep_proj_id) = &dep.project_id {
@@ -308,7 +309,11 @@ impl ModProvider for ModrinthClient {
                         .get("sha512")
                         .or_else(|| f.hashes.get("sha1"))
                         .cloned(),
-                    filename: f.filename.clone(),
+                    filename: std::path::Path::new(&f.filename)
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or("unknown_mod.jar")
+                        .to_string(),
                     source: self.id().to_string(),
                     version: v.version_number.clone(),
                     dependencies: project_deps.get(&v.project_id).cloned().unwrap_or_default(),
