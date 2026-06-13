@@ -19,6 +19,10 @@ pub enum Commands {
         /// Mod loader (e.g., fabric, forge, neoforge, quilt)
         #[arg(short, long)]
         loader: String,
+
+        /// Direct path to mods folder (enables shell tab-completion)
+        #[arg(long)]
+        mods_folder: Option<String>,
     },
 
     /// Interactively setup the configuration

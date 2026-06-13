@@ -20,7 +20,11 @@ use anyhow::Result;
 /// Takes the parsed Cli options and runs the mapped command routine.
 pub async fn exec(cli: Cli) -> Result<()> {
     match cli.command {
-        Commands::Init { mc_version, loader } => init::do_cmd(mc_version, loader).await,
+        Commands::Init {
+            mc_version,
+            loader,
+            mods_folder,
+        } => init::do_cmd(mc_version, loader, mods_folder).await,
         Commands::Setup => setup::do_cmd().await,
         Commands::Search { query, source } => {
             let full_query = query.join(" ");
