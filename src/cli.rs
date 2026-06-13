@@ -45,7 +45,7 @@ pub enum Commands {
         #[arg(short, long)]
         mc_version: Option<String>,
 
-        /// Source to install from (modrinth, sf) - Defaults to modrinth
+        /// Source to install from (modrinth) - Defaults to modrinth
         #[arg(short, long)]
         source: Option<String>,
     },

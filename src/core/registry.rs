@@ -22,11 +22,7 @@ impl ProviderRegistry {
 
     /// Retrieves a provider by its identifier.
     pub fn get(&self, id: &str) -> Result<&dyn ModProvider> {
-        let mut key = id.to_lowercase();
-        if key == "sf" {
-            key = "sourceforge".to_string();
-        }
-
+        let key = id.to_lowercase();
         self.providers
             .get(&key)
             .map(|p| p.as_ref())

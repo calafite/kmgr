@@ -203,7 +203,6 @@ impl ModProvider for ModrinthClient {
         let concurrency_limit = 5;
 
         while !queue.is_empty() {
-            // Filter out already seen projects/slugs to avoid duplicate requests
             let current_batch: Vec<(String, Option<String>)> = queue
                 .drain(..)
                 .filter(|(req, _)| !seen_projects.contains(req))
@@ -213,7 +212,6 @@ impl ModProvider for ModrinthClient {
                 break;
             }
 
-            // Mark them as seen
             for (req, _) in &current_batch {
                 seen_projects.insert(req.clone());
             }
@@ -276,7 +274,6 @@ impl ModProvider for ModrinthClient {
                         root_project_id = Some(project.id.clone());
                     }
 
-                    // Ensure we also mark the resolved project ID as seen so we don't resolve it again
                     seen_projects.insert(project.id.clone());
                     seen_projects.insert(project.slug.clone());
 
