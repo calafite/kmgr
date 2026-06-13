@@ -6,7 +6,7 @@ use colored::Colorize;
 /// Takes a search string and an optional source registry identifier.
 /// Retrieves matching packages from the remote provider and outputs them.
 pub async fn do_cmd(query: String, source_opt: Option<String>) -> Result<()> {
-    let registry = crate::clients::build_registry();
+    let registry = crate::clients::build_registry()?;
     let provider = match &source_opt {
         Some(src) => registry.get(src)?,
         None => registry.get_default()?,

@@ -19,7 +19,7 @@ pub async fn do_cmd(mod_name: String, mc_version: Option<String>, source_opt: Op
     state.check_initialized()?;
     let version_str = mc_version.unwrap_or_else(|| state.default_mc_version.clone());
     
-    let registry = crate::clients::build_registry();
+    let registry = crate::clients::build_registry()?;
     let provider = match &source_opt {
         Some(src) => registry.get(src)?,
         None => registry.get_default()?,
