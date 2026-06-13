@@ -1,5 +1,6 @@
 use crate::core::downloader::Downloader;
 use crate::core::state::KmgrState;
+use crate::core::utils::*;
 use anyhow::Result;
 use colored::Colorize;
 use std::path::Path;
@@ -38,27 +39,26 @@ pub async fn do_cmd() -> Result<()> {
             needs_download = false;
 
             if let Some(expected_hash) = &mod_info.hash {
-                let bytes = tokio::fs::read(&dest).await.unwrap_or_default();
                 let is_sha1 = expected_hash.len() == 40;
-                let actual_hex = if is_sha1 {
-                    use sha1::{Digest, Sha1};
-                    let mut hasher = Sha1::new();
-                    hasher.update(&bytes);
-                    hex::encode(hasher.finalize())
-                } else {
-                    use sha2::{Digest, Sha512};
-                    let mut hasher = Sha512::new();
-                    hasher.update(&bytes);
-                    hex::encode(hasher.finalize())
-                };
-
-                if &actual_hex != expected_hash {
-                    println!(
-                        "   {} Checksum mismatch for '{}', re-downloading...",
-                        "⚠".yellow(),
-                        mod_info.filename
-                    );
-                    needs_download = true;
+                match compute_file_hash(&dest, is_sha1).await {
+                    Ok(actual_hex) if &actual_hex != expected_hash => {
+                        println!(
+                            "   {} Checksum mismatch for '{}', re-downloading...",
+                            "⚠".yellow(),
+                            mod_info.filename
+                        );
+                        needs_download = true;
+                    }
+                    Err(e) => {
+                        println!(
+                            "   {} Failed to read '{}': {}",
+                            "⚠".yellow(),
+                            mod_info.filename,
+                            e
+                        );
+                        needs_download = true;
+                    }
+                    _ => {}
                 }
             }
         }
