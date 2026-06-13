@@ -149,7 +149,12 @@ impl ModProvider for SourceForgeClient {
         _mc_version: &str,
         _loader: &str,
     ) -> Result<Vec<ResolvedTarget>> {
-        let normalized_name = project_name.to_lowercase().replace(' ', "-");
+        let actual_name = project_name
+            .split_once('@')
+            .map(|(n, _)| n)
+            .unwrap_or(project_name);
+
+        let normalized_name = actual_name.to_lowercase().replace(' ', "-");
         let _project = self.get_project(&normalized_name).await?;
 
         let download_url = self.get_latest_download_url(&normalized_name);
