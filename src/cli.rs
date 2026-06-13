@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "kmgr")]
-#[command(author, version, about = " | A fast, lightweight Minecraft CLI Mod Manager written in Rust", long_about = None)]
+#[command(author, version, about = " A fast, lightweight Minecraft CLI Mod Manager written in Rust", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
