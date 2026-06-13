@@ -11,7 +11,7 @@ use tokio::fs;
 pub async fn do_cmd(mc_version: String, loader: String) -> Result<()> {
     println!("{} Initialize kmgr environment...", "".cyan().bold());
 
-    let mut state = KmgrState::load().await?;
+    let (mut state, _lock) = KmgrState::lock_and_load().await?;
     state.default_mc_version = mc_version;
     state.mod_loader = loader;
 

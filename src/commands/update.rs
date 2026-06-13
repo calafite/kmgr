@@ -9,7 +9,7 @@ use futures::stream::{self, StreamExt};
 /// Polls remote registries for newer versions of installed packages, reports
 /// the differences, and replaces artifacts if requested.
 pub async fn do_cmd(apply: bool) -> Result<()> {
-    let mut state = KmgrState::load().await?;
+    let (mut state, _lock) = KmgrState::lock_and_load().await?;
     state.check_initialized()?;
 
     println!("{} Checking installed dependencies...\n", "".cyan().bold());

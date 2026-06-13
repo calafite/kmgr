@@ -9,7 +9,7 @@ use tokio::fs;
 pub async fn do_cmd() -> Result<()> {
     println!("{} Starting interactive setup...", "".cyan().bold());
 
-    let mut state = KmgrState::load().await?;
+    let (mut state, _lock) = KmgrState::lock_and_load().await?;
 
     let mc_version;
     loop {
