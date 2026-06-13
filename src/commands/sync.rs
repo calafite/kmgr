@@ -4,6 +4,8 @@ use crate::core::utils::*;
 use anyhow::Result;
 use colored::Colorize;
 use std::path::Path;
+use std::sync::Arc;
+use futures::stream::{self, StreamExt};
 
 /// Verifies disk artifacts against the application state configuration.
 ///
@@ -13,7 +15,6 @@ use std::path::Path;
 pub async fn do_cmd() -> Result<()> {
     let state = KmgrState::load().await?;
     state.check_initialized()?;
-    let downloader = Downloader::new();
 
     println!("{} Syncing mod files from configs...\n", "".cyan().bold());
 
@@ -29,65 +30,103 @@ pub async fn do_cmd() -> Result<()> {
         tokio::fs::create_dir_all(&state.mods_folder).await?;
     }
 
-    let mut restored_count = 0;
+    let downloader = Arc::new(Downloader::new());
+    let concurrency_limit = 10;
+    let mods_folder = state.mods_folder.clone();
 
-    for (_, mod_info) in &state.installed_mods {
-        let dest = state.get_mod_path(&mod_info.filename, mod_info.enabled);
+    let installed_mods_vec: Vec<_> = state.installed_mods.clone().into_iter().collect();
 
-        let mut needs_download = true;
-        if Path::new(&dest).exists() {
-            needs_download = false;
+    let sync_tasks = stream::iter(installed_mods_vec)
+        .map(|(id, mod_info)| {
+            let downloader_ref = downloader.clone();
+            let mods_folder_ref = mods_folder.clone();
+            let id_clone = id.clone();
+            let mod_info_clone = mod_info.clone();
 
-            if let Some(expected_hash) = &mod_info.hash {
-                let is_sha1 = expected_hash.len() == 40;
-                match compute_file_hash(&dest, is_sha1).await {
-                    Ok(actual_hex) if &actual_hex != expected_hash => {
-                        println!(
-                            "   {} Checksum mismatch for '{}', re-downloading...",
-                            "⚠".yellow(),
-                            mod_info.filename
-                        );
-                        needs_download = true;
-                    }
-                    Err(e) => {
-                        println!(
-                            "   {} Failed to read '{}': {}",
-                            "⚠".yellow(),
-                            mod_info.filename,
-                            e
-                        );
-                        needs_download = true;
-                    }
-                    _ => {}
+            async move {
+                let mut needs_download = true;
+                let mut download_success = false;
+                let mut error_msg = None;
+
+                // Resolve destination path manually to avoid cloning KmgrState
+                let mut dest_path = Path::new(&mods_folder_ref).join(&mod_info_clone.filename);
+                if !mod_info_clone.enabled {
+                    let mut ext = dest_path.into_os_string();
+                    ext.push(".disabled");
+                    dest_path = std::path::PathBuf::from(ext);
                 }
-            }
-        }
+                let dest = dest_path.to_string_lossy().to_string();
 
-        if needs_download {
-            if mod_info.download_url.is_empty() {
-                eprintln!(
-                    "   {} Cannot restore '{}' automatically (missing download URL in state). Try running `kmgr update --apply`.",
-                    "⚠".yellow(),
-                    mod_info.filename
-                );
-                continue;
-            }
+                if Path::new(&dest).exists() {
+                    needs_download = false;
+                    if let Some(expected_hash) = &mod_info_clone.hash {
+                        let is_sha1 = expected_hash.len() == 40;
+                        match compute_file_hash(&dest, is_sha1).await {
+                            Ok(actual_hex) if &actual_hex != expected_hash => {
+                                println!(
+                                    "   {} Checksum mismatch for '{}', re-downloading...",
+                                    "⚠".yellow(),
+                                    mod_info_clone.filename
+                                );
+                                needs_download = true;
+                            }
+                            Err(e) => {
+                                println!(
+                                    "   {} Failed to compute checksum for '{}': {}. Re-downloading...",
+                                    "⚠".yellow(),
+                                    mod_info_clone.filename,
+                                    e
+                                );
+                                needs_download = true;
+                            }
+                            _ => {} // Hashes match
+                        }
+                    }
+                }
 
-            println!(
-                "   {} Restoring {}...",
-                "↓".blue(),
-                mod_info.filename.cyan()
-            );
-            if let Err(e) = downloader
-                .download_file(&mod_info.download_url, &dest, mod_info.hash.as_deref())
-                .await
-            {
-                eprintln!("      {} Failed: {}", "✗".red(), e);
-                let _ = tokio::fs::remove_file(&dest).await;
-            } else {
-                println!("      {} Done", "✔".green());
-                restored_count += 1;
+                if needs_download {
+                    if mod_info_clone.download_url.is_empty() {
+                        let msg = format!(
+                            "Cannot restore '{}' automatically (missing download URL in state). Try running `kmgr update --apply`.",
+                            mod_info_clone.filename
+                        );
+                        eprintln!("   {} {}", "⚠".yellow(), msg);
+                        error_msg = Some(msg);
+                    } else {
+                        println!(
+                            "   {} Restoring {}...",
+                            "↓".blue(),
+                            mod_info_clone.filename.cyan()
+                        );
+                        if let Err(e) = downloader_ref
+                            .download_file(&mod_info_clone.download_url, &dest, mod_info_clone.hash.as_deref())
+                            .await
+                        {
+                            eprintln!("      {} Failed: {}", "✗".red(), e);
+                            error_msg = Some(format!("Download failed: {}", e));
+                            let _ = tokio::fs::remove_file(&dest).await;
+                        } else {
+                            println!("      {} Done", "✔".green());
+                            download_success = true;
+                        }
+                    }
+                }
+                // Return status for this mod
+                (id_clone, mod_info_clone, download_success, error_msg)
             }
+        })
+        .buffer_unordered(concurrency_limit);
+
+    let mut restored_count = 0;
+    let mut sync_errors = Vec::new();
+
+    // Collect results
+    let results: Vec<_> = sync_tasks.collect().await;
+    for (_id, mod_info, download_success, error_msg) in results {
+        if download_success {
+            restored_count += 1;
+        } else if let Some(msg) = error_msg {
+            sync_errors.push(format!("{} ({})", mod_info.name, msg));
         }
     }
 
@@ -97,8 +136,15 @@ pub async fn do_cmd() -> Result<()> {
             "".green().bold(),
             restored_count.to_string().yellow()
         );
-    } else {
+    } else if sync_errors.is_empty() {
         println!("{} All files are present and synced.", "✔".green());
+    }
+
+    if !sync_errors.is_empty() {
+        eprintln!("\n{} Some mods failed to sync:", "✗".red().bold());
+        for err in sync_errors {
+            eprintln!("   - {}", err.red());
+        }
     }
 
     Ok(())
