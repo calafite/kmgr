@@ -33,7 +33,6 @@ pub struct Project {
 pub struct Dependency {
     pub version_id: Option<String>,
     pub project_id: Option<String>,
-    pub file_name: Option<String>,
     pub dependency_type: String,
 }
 
@@ -47,7 +46,6 @@ pub struct VersionFile {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Version {
-    pub id: String,
     pub project_id: String,
     pub version_number: String,
     pub dependencies: Vec<Dependency>,
@@ -74,12 +72,7 @@ impl ModrinthClient {
         let mut url = reqwest::Url::parse(&format!("{}/search", self.base_url))?;
         url.query_pairs_mut().append_pair("query", query);
 
-        let response = self
-            .client
-            .get(url)
-            .send()
-            .await?
-            .error_for_status()?;
+        let response = self.client.get(url).send().await?.error_for_status()?;
         Ok(response.json().await?)
     }
 
@@ -104,18 +97,14 @@ impl ModrinthClient {
     ) -> Result<Vec<Version>> {
         let game_versions = format!("[\"{}\"]", mc_version);
         let loaders = format!("[\"{}\"]", loader);
-        
-        let mut url = reqwest::Url::parse(&format!("{}/project/{}/version", self.base_url, project_id))?;
+
+        let mut url =
+            reqwest::Url::parse(&format!("{}/project/{}/version", self.base_url, project_id))?;
         url.query_pairs_mut()
             .append_pair("game_versions", &game_versions)
             .append_pair("loaders", &loaders);
 
-        let response = self
-            .client
-            .get(url)
-            .send()
-            .await?
-            .error_for_status()?;
+        let response = self.client.get(url).send().await?.error_for_status()?;
 
         Ok(response.json().await?)
     }
