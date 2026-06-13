@@ -101,13 +101,13 @@ kmgr init --mc-version 1.21.11 --loader fabric
 Every command (except configuration and search commands) validates that the environment has been successfully configured first.
 
 ### Search
-Query Modrinth or SourceForge databases for a specific mod query. Quotes are optional.
+Query the Modrinth database for a specific mod query. Quotes are optional.
 
 ```bash
 kmgr search iris shaders [-s <source>]
 ```
 * **Options**:
-  * `-s, --source`: The source target. Supported: `modrinth`, `sf` (SourceForge). Defaults to `modrinth`.
+  * `-s, --source`: The source target. Supported: `modrinth`. Defaults to `modrinth`.
 
 ### Install
 Download and install specific mods by name or slug. `kmgr` will automatically download downstream dependencies recursively. Supports bulk operations.
@@ -135,7 +135,7 @@ kmgr update --apply
   * `-a, --apply`: Actually triggers the download of the newer versions, switching physical `.jar` allocations.
 
 ### Remove
-Uninstall mods by name/slug. Supports bulk operations.
+Uninstall mods by name or slug. Supports bulk operations and fuzzy matching.
 
 ```bash
 kmgr remove iris sodium
@@ -173,7 +173,7 @@ kmgr enable sodium voicechat
 ```
 * **Disabling**: Renames `mods/sodium.jar` to `mods/sodium.jar.disabled`.
 * **Enabling**: Reverts `mods/sodium.jar.disabled` back to `mods/sodium.jar`.
-* **Note:** Both `enable` and `disable` match mod names fuzzily for ease of use.
+* **Note:** `enable`, `disable`, and `remove` match mod names fuzzily for ease of use.
 
 ***
 
