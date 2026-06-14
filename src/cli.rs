@@ -38,7 +38,7 @@ pub enum Commands {
         #[arg(required = true)]
         query: Vec<String>,
 
-        /// Source to search in (modrinth, sf) - Defaults to modrinth
+        /// Source to search in (modrinth, more tba) - Defaults to modrinth
         #[arg(short, long)]
         source: Option<String>,
     },
