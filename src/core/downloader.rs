@@ -146,7 +146,6 @@ impl Downloader {
             }
         }
 
-        // Download and verification succeeded, atomically rename to final path
         drop(file);
         tokio::fs::rename(&part_path, output_path).await?;
 
