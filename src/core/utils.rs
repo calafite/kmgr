@@ -4,6 +4,9 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+/// Default timeout in seconds for all external HTTP requests.
+pub const HTTP_TIMEOUT_SECS: u64 = 15;
+
 pub async fn compute_file_hash<P: AsRef<Path>>(path: P, is_sha1: bool) -> anyhow::Result<String> {
     let path_buf = path.as_ref().to_path_buf();
 
