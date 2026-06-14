@@ -8,7 +8,7 @@ use futures::stream::{self, StreamExt};
 /// Takes a boolean flag indicating whether updates should be applied to disk.
 /// Polls remote registries for newer versions of installed packages, reports
 /// the differences, and replaces artifacts if requested.
-pub async fn do_cmd(apply: bool) -> Result<()> {
+pub async fn do_cmd(apply: bool, jobs: usize) -> Result<()> {
     let (mut state, _lock) = KmgrState::lock_and_load().await?;
     state.check_initialized()?;
 
@@ -36,7 +36,7 @@ pub async fn do_cmd(apply: bool) -> Result<()> {
     let default_mc_version = state.default_mc_version.clone();
     let mod_loader = state.mod_loader.clone();
 
-    let concurrency_limit = 10;
+    let concurrency_limit = jobs;
     let resolved_results: Vec<_> = stream::iter(installed_mods.clone())
         .map(|(id, mod_info)| {
             let registry_clone = registry.clone();
@@ -49,7 +49,7 @@ pub async fn do_cmd(apply: bool) -> Result<()> {
                 let mut latest_version = None;
                 let mut update_target = None;
                 if let Ok(provider) = registry_clone.get(&source) {
-                    if let Ok(targets) = provider.resolve(&id_clone, &mc_version, &loader).await {
+                    if let Ok(targets) = provider.resolve(&id_clone, &mc_version, &loader, jobs).await {
                         if let Some(target) = targets.into_iter().next() {
                             latest_version = Some(target.version.clone());
                             update_target = Some(target);

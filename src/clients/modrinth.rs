@@ -182,6 +182,7 @@ impl ModProvider for ModrinthClient {
         project_slug: &str,
         mc_version: &str,
         loader: &str,
+        concurrency: usize,
     ) -> Result<Vec<ResolvedTarget>> {
         let (actual_slug, requested_version) =
             if let Some((name, ver)) = project_slug.split_once('@') {
@@ -200,7 +201,7 @@ impl ModProvider for ModrinthClient {
         let mut queue: Vec<(String, Option<String>)> =
             vec![(actual_slug.to_string(), requested_version)];
 
-        let concurrency_limit = 5;
+        let concurrency_limit = concurrency;
 
         while !queue.is_empty() {
             let current_batch: Vec<(String, Option<String>)> = queue

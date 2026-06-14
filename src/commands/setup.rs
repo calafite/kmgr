@@ -4,6 +4,31 @@ use colored::Colorize;
 use std::io::{self, Write};
 use tokio::fs;
 
+use rustyline::completion::{Completer, FilenameCompleter, Pair};
+use rustyline::highlight::Highlighter;
+use rustyline::hint::Hinter;
+use rustyline::validate::Validator;
+use rustyline::{Context, Helper};
+
+struct PathHelper(FilenameCompleter);
+
+impl Completer for PathHelper {
+    type Candidate = Pair;
+    fn complete(
+        &self,
+        line: &str,
+        pos: usize,
+        ctx: &Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<Pair>)> {
+        self.0.complete(line, pos, ctx)
+    }
+}
+
+impl Hinter for PathHelper { type Hint = String; }
+impl Highlighter for PathHelper {}
+impl Validator for PathHelper {}
+impl Helper for PathHelper {}
+
 /// Interactively builds the environment configuration with robust validation and normalization.
 /// Uses absolute paths, cannot resolve shell symbols (e.g, *)
 pub async fn do_cmd() -> Result<()> {
@@ -113,30 +138,54 @@ pub async fn do_cmd() -> Result<()> {
     }
 
     let mods_folder;
+    let mut rl = rustyline::Editor::new()?;
+    rl.set_helper(Some(PathHelper(FilenameCompleter::new())));
+
     loop {
         let has_current = !state.mods_folder.is_empty();
-        if has_current {
-            print!(
-                "   {} Mods folder path [current: {}]: ",
+        let prompt_str = if has_current {
+            format!(
+                "   {} Mods folder (Type path or drag-and-drop) [current: {}]: ",
                 "?".yellow(),
                 state.mods_folder
-            );
+            )
         } else {
-            print!("   {} Mods folder path [default: mods]: ", "?".yellow());
-        }
-        io::stdout().flush()?;
+            format!(
+                "   {} Mods folder (Type path or drag-and-drop) [default: mods]: ",
+                "?".yellow()
+            )
+        };
 
-        let mut input = String::new();
-        io::stdin().read_line(&mut input)?;
-        let val = input.trim();
+        let mut val = match rl.readline(&prompt_str) {
+            Ok(line) => line.trim().to_string(),
+            Err(rustyline::error::ReadlineError::Interrupted) | Err(rustyline::error::ReadlineError::Eof) => {
+                println!("      {} Aborted.", "⚠".yellow());
+                std::process::exit(1);
+            }
+            Err(err) => {
+                eprintln!("      {} Readline error: {}", "✗".red(), err);
+                continue;
+            }
+        };
 
         if val.is_empty() {
             if has_current {
                 mods_folder = state.mods_folder.clone();
-                break;
             } else {
                 mods_folder = "mods".to_string();
-                break;
+            }
+            break;
+        }
+
+        if (val.starts_with('\'') && val.ends_with('\''))
+            || (val.starts_with('"') && val.ends_with('"'))
+        {
+            val = val[1..val.len() - 1].to_string();
+        }
+
+        if val.starts_with("~/") {
+            if let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
+                val = val.replacen('~', &home, 1);
             }
         }
 

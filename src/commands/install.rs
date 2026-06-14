@@ -34,6 +34,7 @@ pub async fn do_cmd(
     mod_name: String,
     mc_version: Option<String>,
     source_opt: Option<String>,
+    jobs: usize,
 ) -> Result<()> {
     let (mut state, _lock) = KmgrState::lock_and_load().await?;
 
@@ -61,7 +62,7 @@ pub async fn do_cmd(
     let downloader = Arc::new(Downloader::new());
 
     match provider
-        .resolve(&mod_name, &version_str, &state.mod_loader)
+        .resolve(&mod_name, &version_str, &state.mod_loader, jobs)
         .await
     {
         Ok(versions_to_install) => {
@@ -76,7 +77,7 @@ pub async fn do_cmd(
                 versions_to_install.len().to_string().yellow()
             );
 
-            let concurrency_limit = 10;
+            let concurrency_limit = jobs;
             let mods_folder = state.mods_folder.clone();
 
             let install_tasks: Vec<Result<InstallTaskResult>> =
@@ -109,11 +110,11 @@ pub async fn do_cmd(
                                 }
                             }
 
-                            println!(
+                            downloader.println(&format!(
                                 "    {} Downloading {}",
                                 "↓".blue(),
                                 target.filename.bright_black()
-                            );
+                            ));
 
                             downloader
                                 .download_file(

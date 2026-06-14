@@ -38,5 +38,6 @@ pub trait ModProvider: Send + Sync {
         project: &str,
         mc_version: &str,
         loader: &str,
+        concurrency: usize,
     ) -> Result<Vec<ResolvedTarget>>;
 }

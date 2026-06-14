@@ -12,7 +12,7 @@ use std::sync::Arc;
 /// Iterates through declared deployment packages and checks their physical
 /// presence on the system. If required files are missing, initiates remote
 /// calls to synchronize the disk with the state declaration.
-pub async fn do_cmd() -> Result<()> {
+pub async fn do_cmd(jobs: usize) -> Result<()> {
     let state = KmgrState::load().await?;
     state.check_initialized()?;
 
@@ -31,15 +31,14 @@ pub async fn do_cmd() -> Result<()> {
     }
 
     let downloader = Arc::new(Downloader::new());
-    let concurrency_limit = 10;
-    let mods_folder = state.mods_folder.clone();
+    let concurrency_limit = jobs;
 
     let installed_mods_vec: Vec<_> = state.installed_mods.clone().into_iter().collect();
 
     let sync_tasks = stream::iter(installed_mods_vec)
         .map(|(id, mod_info)| {
             let downloader_ref = downloader.clone();
-            let mods_folder_ref = mods_folder.clone();
+            let dest = state.get_mod_path(&mod_info.filename, mod_info.enabled);
             let id_clone = id.clone();
             let mod_info_clone = mod_info.clone();
 
@@ -47,19 +46,6 @@ pub async fn do_cmd() -> Result<()> {
                 let mut needs_download = true;
                 let mut download_success = false;
                 let mut error_msg = None;
-
-                let safe_filename = Path::new(&mod_info_clone.filename)
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .unwrap_or("unknown.jar");
-                let mut dest_path = Path::new(&mods_folder_ref).join(safe_filename);
-
-                if !mod_info_clone.enabled {
-                    let mut ext = dest_path.into_os_string();
-                    ext.push(".disabled");
-                    dest_path = std::path::PathBuf::from(ext);
-                }
-                let dest = dest_path.to_string_lossy().to_string();
 
                 if Path::new(&dest).exists() {
                     needs_download = false;
@@ -97,11 +83,11 @@ pub async fn do_cmd() -> Result<()> {
                         eprintln!("   {} {}", "⚠".yellow(), msg);
                         error_msg = Some(msg);
                     } else {
-                        println!(
+                        downloader_ref.println(&format!(
                             "   {} Restoring {}...",
                             "↓".blue(),
                             mod_info_clone.filename.cyan()
-                        );
+                        ));
                         if let Err(e) = downloader_ref
                             .download_file(&mod_info_clone.download_url, &dest, mod_info_clone.hash.as_deref())
                             .await
