@@ -200,7 +200,7 @@ pub async fn do_cmd() -> Result<()> {
         }
 
         let mut normalized = val.replace('\\', "/");
-        while normalized.ends_with('/') {
+        while normalized.ends_with('/') && normalized.len() > 1 {
             normalized.pop();
         }
 
