@@ -1,10 +1,6 @@
 use anyhow::Result;
 use colored::Colorize;
 
-/// Performs a registry query.
-///
-/// Takes a search string and an optional source registry identifier.
-/// Retrieves matching packages from the remote provider and outputs them.
 pub async fn do_cmd(query: String, source_opt: Option<String>) -> Result<()> {
     let registry = crate::clients::build_registry()?;
     let provider = match &source_opt {
