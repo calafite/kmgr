@@ -273,8 +273,13 @@ impl KmgrState {
     /// Safely acquires an exclusive filesystem lock before loading the state.
     /// The lock is automatically released when the returned `LockFile` goes out of scope.
     pub async fn lock_and_load() -> Result<(Self, LockFile)> {
-        let mut lock = LockFile::open(".kmgr.lock.lck")?;
-        lock.lock()?;
+        let lock = tokio::task::spawn_blocking(|| {
+            let mut lock = LockFile::open(".kmgr.lock.lck")?;
+            lock.lock()?;
+            Ok::<_, anyhow::Error>(lock)
+        })
+        .await??;
+
         let state = Self::load().await?;
         Ok((state, lock))
     }
