@@ -54,6 +54,13 @@ impl Downloader {
             break resp.error_for_status()?;
         };
 
+        let output_path = output_path.as_ref();
+        let part_path = {
+            let mut s = output_path.as_os_str().to_os_string();
+            s.push(".part");
+            std::path::PathBuf::from(s)
+        };
+
         let total_size = response.content_length().unwrap_or(0);
 
         let pb = if total_size > 0 {
@@ -78,7 +85,7 @@ impl Downloader {
         };
 
         let mut stream = response.bytes_stream();
-        let mut file = File::create(&output_path).await?;
+        let mut file = File::create(&part_path).await?;
 
         let is_sha1 = expected_hash.map_or(false, |h| h.len() == 40);
         let mut sha1_hasher = (expected_hash.is_some() && is_sha1).then(Sha1::new);
@@ -109,7 +116,7 @@ impl Downloader {
 
         if !success {
             drop(file);
-            let _ = tokio::fs::remove_file(&output_path).await;
+            let _ = tokio::fs::remove_file(&part_path).await;
             return transfer_result;
         }
 
@@ -134,10 +141,14 @@ impl Downloader {
 
             if actual_hex != expected {
                 drop(file);
-                let _ = tokio::fs::remove_file(&output_path).await;
+                let _ = tokio::fs::remove_file(&part_path).await;
                 anyhow::bail!("Hash mismatch! Expected: {}, got: {}", expected, actual_hex);
             }
         }
+
+        // Download and verification succeeded, atomically rename to final path
+        drop(file);
+        tokio::fs::rename(&part_path, output_path).await?;
 
         Ok(())
     }
