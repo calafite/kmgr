@@ -4,6 +4,31 @@ use colored::Colorize;
 use std::io::{self, Write};
 use tokio::fs;
 
+use rustyline::completion::{Completer, FilenameCompleter, Pair};
+use rustyline::highlight::Highlighter;
+use rustyline::hint::Hinter;
+use rustyline::validate::Validator;
+use rustyline::{Context, Helper};
+
+struct PathHelper(FilenameCompleter);
+
+impl Completer for PathHelper {
+    type Candidate = Pair;
+    fn complete(
+        &self,
+        line: &str,
+        pos: usize,
+        ctx: &Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<Pair>)> {
+        self.0.complete(line, pos, ctx)
+    }
+}
+
+impl Hinter for PathHelper { type Hint = String; }
+impl Highlighter for PathHelper {}
+impl Validator for PathHelper {}
+impl Helper for PathHelper {}
+
 /// Interactively builds the environment configuration with robust validation and normalization.
 /// Uses absolute paths, cannot resolve shell symbols (e.g, *)
 pub async fn do_cmd() -> Result<()> {
@@ -113,25 +138,35 @@ pub async fn do_cmd() -> Result<()> {
     }
 
     let mods_folder;
+    let mut rl = rustyline::Editor::new()?;
+    rl.set_helper(Some(PathHelper(FilenameCompleter::new())));
+
     loop {
         let has_current = !state.mods_folder.is_empty();
-        if has_current {
-            print!(
-                "   {} Mods folder (Type path, 'browse', or drag-and-drop) [current: {}]: ",
+        let prompt_str = if has_current {
+            format!(
+                "   {} Mods folder (Type path or drag-and-drop) [current: {}]: ",
                 "?".yellow(),
                 state.mods_folder
-            );
+            )
         } else {
-            print!(
-                "   {} Mods folder (Type path, 'browse', or drag-and-drop) [default: mods]: ",
+            format!(
+                "   {} Mods folder (Type path or drag-and-drop) [default: mods]: ",
                 "?".yellow()
-            );
-        }
-        io::stdout().flush()?;
+            )
+        };
 
-        let mut input = String::new();
-        io::stdin().read_line(&mut input)?;
-        let mut val = input.trim().to_string();
+        let mut val = match rl.readline(&prompt_str) {
+            Ok(line) => line.trim().to_string(),
+            Err(rustyline::error::ReadlineError::Interrupted) | Err(rustyline::error::ReadlineError::Eof) => {
+                println!("      {} Aborted.", "⚠".yellow());
+                std::process::exit(1);
+            }
+            Err(err) => {
+                eprintln!("      {} Readline error: {}", "✗".red(), err);
+                continue;
+            }
+        };
 
         if val.is_empty() {
             if has_current {
@@ -140,21 +175,6 @@ pub async fn do_cmd() -> Result<()> {
                 mods_folder = "mods".to_string();
             }
             break;
-        }
-
-        if val.to_lowercase() == "browse" {
-            println!("      {} Opening file browser...", "ℹ".blue());
-            if let Some(folder) = rfd::AsyncFileDialog::new()
-                .set_title("Select Minecraft Mods Folder")
-                .pick_folder()
-                .await
-            {
-                val = folder.path().to_string_lossy().to_string();
-                println!("      {} Selected: {}", "✔".green(), val.cyan());
-            } else {
-                println!("      {} No folder selected. Please try again.", "⚠".yellow());
-                continue;
-            }
         }
 
         if (val.starts_with('\'') && val.ends_with('\''))
