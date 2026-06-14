@@ -16,7 +16,11 @@ pub async fn do_cmd(mc_version: String, loader: String, mods_folder: Option<Stri
     state.mod_loader = loader;
 
     if let Some(folder) = mods_folder {
-        state.mods_folder = folder;
+        let mut normalized = folder.replace('\\', "/");
+        while normalized.ends_with('/') && normalized.len() > 1 {
+            normalized.pop();
+        }
+        state.mods_folder = normalized;
     }
 
     fs::create_dir_all(&state.mods_folder).await?;
