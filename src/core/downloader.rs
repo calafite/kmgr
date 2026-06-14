@@ -20,7 +20,10 @@ impl Downloader {
     /// Creates a new instance of the Downloader.
     pub fn new() -> Self {
         Self {
-            client: Client::new(),
+            client: Client::builder()
+                .connect_timeout(Duration::from_secs(crate::core::utils::HTTP_TIMEOUT_SECS))
+                .build()
+                .unwrap_or_else(|_| Client::new()),
             mp: MultiProgress::new(),
         }
     }
@@ -85,22 +88,35 @@ impl Downloader {
         let mut sha1_hasher = (expected_hash.is_some() && is_sha1).then(Sha1::new);
         let mut sha512_hasher = (expected_hash.is_some() && !is_sha1).then(Sha512::new);
 
-        while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result?;
-            file.write_all(&chunk).await?;
+        let mut success = false;
 
-            if let Some(ref pb) = pb {
-                pb.inc(chunk.len() as u64);
-            }
+        // Encapsulate streaming to ensure we can catch errors and clean up
+        let transfer_result: Result<()> = async {
+            while let Some(chunk_result) = stream.next().await {
+                let chunk = chunk_result?;
+                file.write_all(&chunk).await?;
 
-            if let Some(ref mut hasher) = sha1_hasher {
-                hasher.update(&chunk);
-            } else if let Some(ref mut hasher) = sha512_hasher {
-                hasher.update(&chunk);
+                if let Some(ref pb) = pb {
+                    pb.inc(chunk.len() as u64);
+                }
+
+                if let Some(ref mut hasher) = sha1_hasher {
+                    hasher.update(&chunk);
+                } else if let Some(ref mut hasher) = sha512_hasher {
+                    hasher.update(&chunk);
+                }
             }
+            file.flush().await?;
+            success = true;
+            Ok(())
+        }.await;
+
+        // If streaming failed, immediately purge the corrupted file
+        if !success {
+            drop(file);
+            let _ = tokio::fs::remove_file(&output_path).await;
+            return transfer_result;
         }
-
-        file.flush().await?;
 
         if let Some(ref pb) = pb {
             pb.finish_and_clear();
