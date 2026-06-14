@@ -25,6 +25,11 @@ impl Downloader {
         }
     }
 
+    /// Safely prints a message above active progress bars.
+    pub fn println(&self, msg: &str) {
+        let _ = self.mp.println(msg);
+    }
+
     /// Downloads a file from a URL to a local path, streaming chunks, showing progress, and verifying its hash.
     pub async fn download_file<P: AsRef<Path>>(
         &self,

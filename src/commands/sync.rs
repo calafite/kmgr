@@ -97,11 +97,11 @@ pub async fn do_cmd(jobs: usize) -> Result<()> {
                         eprintln!("   {} {}", "⚠".yellow(), msg);
                         error_msg = Some(msg);
                     } else {
-                        println!(
+                        downloader_ref.println(&format!(
                             "   {} Restoring {}...",
                             "↓".blue(),
                             mod_info_clone.filename.cyan()
-                        );
+                        ));
                         if let Err(e) = downloader_ref
                             .download_file(&mod_info_clone.download_url, &dest, mod_info_clone.hash.as_deref())
                             .await

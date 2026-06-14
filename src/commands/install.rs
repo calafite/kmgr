@@ -110,11 +110,11 @@ pub async fn do_cmd(
                                 }
                             }
 
-                            println!(
+                            downloader.println(&format!(
                                 "    {} Downloading {}",
                                 "↓".blue(),
                                 target.filename.bright_black()
-                            );
+                            ));
 
                             downloader
                                 .download_file(
