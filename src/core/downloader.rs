@@ -9,7 +9,6 @@ use std::time::Duration;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
-/// A utility for downloading files from remote URLs with streaming and hash verification.
 #[derive(Clone)]
 pub struct Downloader {
     client: Client,
@@ -17,7 +16,6 @@ pub struct Downloader {
 }
 
 impl Downloader {
-    /// Creates a new instance of the Downloader.
     pub fn new() -> Self {
         Self {
             client: Client::builder()
@@ -28,12 +26,10 @@ impl Downloader {
         }
     }
 
-    /// Safely prints a message above active progress bars.
     pub fn println(&self, msg: &str) {
         let _ = self.mp.println(msg);
     }
 
-    /// Downloads a file from a URL to a local path, streaming chunks, showing progress, and verifying its hash.
     pub async fn download_file<P: AsRef<Path>>(
         &self,
         url: &str,
@@ -90,7 +86,6 @@ impl Downloader {
 
         let mut success = false;
 
-        // Encapsulate streaming to ensure we can catch errors and clean up
         let transfer_result: Result<()> = async {
             while let Some(chunk_result) = stream.next().await {
                 let chunk = chunk_result?;
@@ -112,7 +107,6 @@ impl Downloader {
         }
         .await;
 
-        // If streaming failed, immediately purge the corrupted file
         if !success {
             drop(file);
             let _ = tokio::fs::remove_file(&output_path).await;

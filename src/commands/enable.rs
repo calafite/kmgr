@@ -3,10 +3,6 @@ use anyhow::{Result, anyhow};
 use colored::Colorize;
 use tokio::fs;
 
-/// Enables a deployed package.
-///
-/// Refactors the targeted package by stripping the `.disabled` suffix from its
-/// artifact and updating its registry state to active.
 pub async fn do_cmd(mod_name: String) -> Result<()> {
     let (mut state, _lock) = KmgrState::lock_and_load().await?;
     state.check_initialized()?;

@@ -4,11 +4,6 @@ use colored::Colorize;
 use std::collections::HashSet;
 use tokio::fs;
 
-/// Analyzes installed packages and purges disconnected dependencies.
-///
-/// Sweeps through all configured profiles, calculates the full tree of
-/// required packages using local registry constraints, and deletes any
-/// remaining artifacts that no longer have a parent dependency trace.
 pub async fn do_cmd() -> Result<()> {
     let (mut state, _lock) = KmgrState::lock_and_load().await?;
     state.check_initialized()?;

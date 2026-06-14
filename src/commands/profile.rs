@@ -5,9 +5,6 @@ use colored::Colorize;
 use std::collections::HashSet;
 use tokio::fs;
 
-/// Dispatches profile-related subcommands.
-///
-/// Takes a ProfileCommands enum variant and routes it to the correct handler.
 pub async fn do_cmd(command: ProfileCommands) -> Result<()> {
     let (state, _lock) = KmgrState::lock_and_load().await?;
     state.check_initialized()?;
@@ -33,7 +30,6 @@ pub async fn do_cmd(command: ProfileCommands) -> Result<()> {
     }
 }
 
-/// Retrieves and renders all established layout profiles.
 async fn list() -> Result<()> {
     let state = KmgrState::load().await?;
     println!("{} Profiles:", "".cyan().bold());
@@ -50,9 +46,6 @@ async fn list() -> Result<()> {
     Ok(())
 }
 
-/// Sets up an empty application layout profile.
-///
-/// Takes the new profile name as a parameter.
 async fn create(name: String) -> Result<()> {
     let mut state = KmgrState::load().await?;
 
@@ -73,9 +66,6 @@ async fn create(name: String) -> Result<()> {
     Ok(())
 }
 
-/// Registers an existing package identifier with the active layout profile.
-///
-/// Takes the requested package name.
 async fn add(mod_name: String) -> Result<()> {
     let mut state = KmgrState::load().await?;
 
@@ -110,9 +100,6 @@ async fn add(mod_name: String) -> Result<()> {
     Ok(())
 }
 
-/// Detaches a package identifier from the active layout profile.
-///
-/// Takes the selected package name.
 async fn remove(mod_name: String) -> Result<()> {
     let mut state = KmgrState::load().await?;
 
@@ -152,11 +139,6 @@ async fn remove(mod_name: String) -> Result<()> {
     Ok(())
 }
 
-/// Swaps the environmental workload to the designated profile.
-///
-/// Takes the name of the target profile. Computes the union of explicit
-/// dependencies required for the profile, deactivates disjoint components,
-/// and re-activates required artifacts.
 async fn switch(name: String) -> Result<()> {
     let mut state = KmgrState::load().await?;
 
@@ -266,9 +248,6 @@ async fn switch(name: String) -> Result<()> {
     Ok(())
 }
 
-/// Erases a layout profile permanently.
-///
-/// Takes the target profile name string.
 async fn delete(name: String) -> Result<()> {
     let mut state = KmgrState::load().await?;
 
@@ -301,9 +280,6 @@ async fn delete(name: String) -> Result<()> {
     Ok(())
 }
 
-/// Relabels a layout profile index key.
-///
-/// Takes the current string identifier and the replacement target identifier.
 async fn rename(old_name: String, new_name: String) -> Result<()> {
     let mut state = KmgrState::load().await?;
 

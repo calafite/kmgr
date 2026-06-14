@@ -24,12 +24,6 @@ enum InstallStatus {
     },
 }
 
-/// Installs a new package or dependency into the environment.
-///
-/// Takes the package identifier, an optional Minecraft version string, and an
-/// optional provider source hint. Resolves the requested package, downloads the
-/// required artifacts, cleans up obsolete versions, and registers the component
-/// in local state.
 pub async fn do_cmd(
     mod_name: String,
     mc_version: Option<String>,

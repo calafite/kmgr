@@ -3,11 +3,6 @@ use anyhow::Result;
 use colored::Colorize;
 use tokio::fs;
 
-/// Initializes the application environment.
-///
-/// Takes the Minecraft version and the mod loader type as strings.
-/// Configures the base state, provisions necessary directories, and writes
-/// the initial configuration to disk.
 pub async fn do_cmd(mc_version: String, loader: String, mods_folder: Option<String>) -> Result<()> {
     println!("{} Initialize kmgr environment...", "".cyan().bold());
 

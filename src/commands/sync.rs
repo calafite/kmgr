@@ -7,11 +7,6 @@ use futures::stream::{self, StreamExt};
 use std::path::Path;
 use std::sync::Arc;
 
-/// Verifies disk artifacts against the application state configuration.
-///
-/// Iterates through declared deployment packages and checks their physical
-/// presence on the system. If required files are missing, initiates remote
-/// calls to synchronize the disk with the state declaration.
 pub async fn do_cmd(jobs: usize) -> Result<()> {
     let state = KmgrState::load().await?;
     state.check_initialized()?;
@@ -101,7 +96,6 @@ pub async fn do_cmd(jobs: usize) -> Result<()> {
                         }
                     }
                 }
-                // Return status for this mod
                 (id_clone, mod_info_clone, download_success, error_msg)
             }
         })
@@ -110,7 +104,6 @@ pub async fn do_cmd(jobs: usize) -> Result<()> {
     let mut restored_count = 0;
     let mut sync_errors = Vec::new();
 
-    // Collect results
     let results: Vec<_> = sync_tasks.collect().await;
     for (_id, mod_info, download_success, error_msg) in results {
         if download_success {

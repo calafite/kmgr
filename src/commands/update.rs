@@ -3,11 +3,6 @@ use anyhow::Result;
 use colored::Colorize;
 use futures::stream::{self, StreamExt};
 
-/// Audits and applies package updates.
-///
-/// Takes a boolean flag indicating whether updates should be applied to disk.
-/// Polls remote registries for newer versions of installed packages, reports
-/// the differences, and replaces artifacts if requested.
 pub async fn do_cmd(apply: bool, jobs: usize) -> Result<()> {
     let (mut state, _lock) = KmgrState::lock_and_load().await?;
     state.check_initialized()?;

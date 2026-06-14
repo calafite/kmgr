@@ -15,9 +15,6 @@ pub mod sync;
 use crate::cli::{Cli, Commands};
 use anyhow::Result;
 
-/// Evaluates cli commands.
-///
-/// Takes the parsed Cli options and runs the mapped command routine.
 pub async fn exec(cli: Cli) -> Result<()> {
     let jobs = cli.jobs;
     if jobs == 0 {

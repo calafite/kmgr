@@ -2,10 +2,6 @@ use crate::core::state::KmgrState;
 use anyhow::Result;
 use colored::Colorize;
 
-/// Prints the currently tracked packages.
-///
-/// Fetches the local application state and outputs a formatted list to stdout,
-/// including current package states, versions, and downstream dependencies.
 pub async fn do_cmd() -> Result<()> {
     let state = KmgrState::load().await?;
     state.check_initialized()?;

@@ -75,7 +75,6 @@ impl ModrinthClient {
         })
     }
 
-    /// Handles GET requests with automatic retries for HTTP 429 Too Many Requests
     async fn get_with_retry(&self, url: &str) -> Result<reqwest::Response> {
         let mut attempts = 0;
         let max_attempts = 5;

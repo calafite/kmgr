@@ -4,11 +4,6 @@ use colored::Colorize;
 use std::io::{self, Write};
 use tokio::fs;
 
-/// Removes a package from the environment.
-///
-/// Takes the requested package identifier. It deletes the physical artifact
-/// from the disk, unregisters it from all active profiles, and drops it from
-/// the local state configuration.
 pub async fn do_cmd(mod_name: String) -> Result<()> {
     let (mut state, _lock) = KmgrState::lock_and_load().await?;
     state.check_initialized()?;

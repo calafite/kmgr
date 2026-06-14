@@ -30,7 +30,6 @@ struct ConfigDto {
 }
 
 impl Default for ConfigDto {
-    /// Returns the default configuration DTO.
     fn default() -> Self {
         Self {
             default_mc_version: default_mc_version_str(),
@@ -49,7 +48,6 @@ struct LockDto {
 }
 
 impl Default for KmgrState {
-    /// Returns the default application state.
     fn default() -> Self {
         Self {
             default_mc_version: default_mc_version_str(),
@@ -62,34 +60,28 @@ impl Default for KmgrState {
     }
 }
 
-/// Returns an empty string as the default Minecraft version.
 fn default_mc_version_str() -> String {
     "".to_string()
 }
 
-/// Returns an empty string as the default mod loader.
 fn default_mod_loader_str() -> String {
     "".to_string()
 }
 
-/// Returns "mods" as the default mods folder path.
 fn default_mods_folder_str() -> String {
     "mods".to_string()
 }
 
-/// Returns true as a default boolean value.
 fn default_true() -> bool {
     true
 }
 
-/// Returns a default profiles map containing only the "default" profile.
 fn default_profiles() -> BTreeMap<String, Vec<String>> {
     let mut m = BTreeMap::new();
     m.insert("default".to_string(), Vec::new());
     m
 }
 
-/// Returns "default" as the default active profile name.
 fn default_active_profile() -> String {
     "default".to_string()
 }
@@ -112,10 +104,6 @@ pub struct InstalledMod {
 }
 
 impl KmgrState {
-    /// Loads application state configuration.
-    ///
-    /// Reads the state from the configuration file and lockfile, provisioning
-    /// backfills for outdated profile schemas or uninitialized default layouts.
     pub async fn load() -> Result<Self> {
         let config: ConfigDto = match fs::read_to_string("kmgr.toml").await {
             Ok(content) => toml::from_str(&content)
@@ -158,7 +146,6 @@ impl KmgrState {
         Ok(state)
     }
 
-    /// Checks if the environment is initialized with standard configurations.
     pub fn check_initialized(&self) -> Result<()> {
         if self.default_mc_version.is_empty() {
             anyhow::bail!(
@@ -171,10 +158,6 @@ impl KmgrState {
         Ok(())
     }
 
-    /// Resolves target package references.
-    ///
-    /// Takes a package reference name and matches it against the index of active
-    /// installations, returning the respective identifier.
     pub fn find_mod_id(&self, mod_name: &str) -> Option<String> {
         for (id, mod_info) in &self.installed_mods {
             if id == mod_name || mod_info.name == mod_name {
@@ -184,10 +167,6 @@ impl KmgrState {
         None
     }
 
-    /// Fuzzy-matches a query against installed mod names and ids.
-    ///
-    /// Returns the best `(id, display_name)` pair above a similarity threshold,
-    /// preferring exact > case-insensitive > substring > edit-distance matches.
     pub fn find_mod_id_fuzzy(&self, query: &str) -> Option<(String, String)> {
         let q = query.to_lowercase();
 
@@ -226,10 +205,7 @@ impl KmgrState {
 
         best.map(|(id, name, _)| (id, name))
     }
-    /// Computes full deployment locations for packages.
-    ///
-    /// Takes a target filename and an activation flag. Interpolates the final
-    /// location across the deployment scope.
+
     pub fn get_mod_path(&self, filename: &str, enabled: bool) -> String {
         let safe_filename = std::path::Path::new(filename)
             .file_name()
@@ -244,10 +220,6 @@ impl KmgrState {
         dest.to_string_lossy().to_string()
     }
 
-    /// Extends configuration to durable storage.
-    ///
-    /// Serializes the profile constraints and physical deployments into separate
-    /// lock and context files using temporary atomic writes.
     pub async fn save(&self) -> Result<()> {
         let config = ConfigDto {
             default_mc_version: self.default_mc_version.clone(),
@@ -270,8 +242,6 @@ impl KmgrState {
         Ok(())
     }
 
-    /// Safely acquires an exclusive filesystem lock before loading the state.
-    /// The lock is automatically released when the returned `LockFile` goes out of scope.
     pub async fn lock_and_load() -> Result<(Self, LockFile)> {
         let lock = tokio::task::spawn_blocking(|| {
             let mut lock = LockFile::open(".kmgr.lock.lck")?;
@@ -285,7 +255,6 @@ impl KmgrState {
     }
 }
 
-/// Writes content to a file atomically by writing to a temporary file first and then renaming it.
 async fn atomic_write(path: &str, content: &str) -> Result<()> {
     let tmp_path = format!("{}.tmp", path);
     fs::write(&tmp_path, content).await?;
