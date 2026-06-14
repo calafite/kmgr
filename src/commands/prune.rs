@@ -46,7 +46,8 @@ pub async fn do_cmd() -> Result<()> {
     let mut to_remove = Vec::new();
     for (id, mod_info) in &state.installed_mods {
         if !reachable.contains(id) {
-            to_remove.push((id.clone(), mod_info.filename.clone(), mod_info.name.clone()));
+            let target_path = state.get_mod_path(&mod_info.filename, mod_info.enabled);
+            to_remove.push((id.clone(), target_path, mod_info.name.clone()));
         }
     }
 
@@ -62,8 +63,7 @@ pub async fn do_cmd() -> Result<()> {
     );
 
     let mut removed_count = 0;
-    for (id, filename, name) in to_remove {
-        let path = format!("{}/{}", state.mods_folder, filename);
+    for (id, path, name) in to_remove {
         let _ = fs::remove_file(&path).await;
         println!("   {} Removed {}", "✔".green(), name.bright_black());
         state.installed_mods.remove(&id);
