@@ -4,6 +4,10 @@ use clap::{Parser, Subcommand};
 #[command(name = "kmgr")]
 #[command(author, version, about = " A fast, lightweight Minecraft CLI Mod Manager written in Rust", long_about = None)]
 pub struct Cli {
+    /// Number of concurrent tasks (downloads/API requests)
+    #[arg(short = 'j', long, default_value_t = 10, global = true)]
+    pub jobs: usize,
+
     #[command(subcommand)]
     pub command: Commands,
 }

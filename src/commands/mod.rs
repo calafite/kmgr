@@ -19,6 +19,11 @@ use anyhow::Result;
 ///
 /// Takes the parsed Cli options and runs the mapped command routine.
 pub async fn exec(cli: Cli) -> Result<()> {
+    let jobs = cli.jobs;
+    if jobs == 0 {
+        anyhow::bail!("Jobs limit must be at least 1");
+    }
+
     match cli.command {
         Commands::Init {
             mc_version,
@@ -36,11 +41,11 @@ pub async fn exec(cli: Cli) -> Result<()> {
             source,
         } => {
             for mod_name in mods {
-                install::do_cmd(mod_name, mc_version.clone(), source.clone()).await?;
+                install::do_cmd(mod_name, mc_version.clone(), source.clone(), jobs).await?;
             }
             Ok(())
         }
-        Commands::Update { apply } => update::do_cmd(apply).await,
+        Commands::Update { apply } => update::do_cmd(apply, jobs).await,
         Commands::Remove { mods } => {
             for mod_name in mods {
                 remove::do_cmd(mod_name).await?;
@@ -59,7 +64,7 @@ pub async fn exec(cli: Cli) -> Result<()> {
             }
             Ok(())
         }
-        Commands::Sync => sync::do_cmd().await,
+        Commands::Sync => sync::do_cmd(jobs).await,
         Commands::Prune => prune::do_cmd().await,
         Commands::Profile { command } => profile::do_cmd(command).await,
         Commands::List => list::do_cmd().await,

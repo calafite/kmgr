@@ -12,7 +12,7 @@ use std::sync::Arc;
 /// Iterates through declared deployment packages and checks their physical
 /// presence on the system. If required files are missing, initiates remote
 /// calls to synchronize the disk with the state declaration.
-pub async fn do_cmd() -> Result<()> {
+pub async fn do_cmd(jobs: usize) -> Result<()> {
     let state = KmgrState::load().await?;
     state.check_initialized()?;
 
@@ -31,7 +31,7 @@ pub async fn do_cmd() -> Result<()> {
     }
 
     let downloader = Arc::new(Downloader::new());
-    let concurrency_limit = 10;
+    let concurrency_limit = jobs;
     let mods_folder = state.mods_folder.clone();
 
     let installed_mods_vec: Vec<_> = state.installed_mods.clone().into_iter().collect();
