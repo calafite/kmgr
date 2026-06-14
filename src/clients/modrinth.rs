@@ -67,7 +67,9 @@ impl ModrinthClient {
         Ok(ModrinthClient {
             client: Client::builder()
                 .default_headers(headers)
-                .timeout(std::time::Duration::from_secs(crate::core::utils::HTTP_TIMEOUT_SECS))
+                .timeout(std::time::Duration::from_secs(
+                    crate::core::utils::HTTP_TIMEOUT_SECS,
+                ))
                 .build()?,
             base_url: "https://api.modrinth.com/v2".to_string(),
         })

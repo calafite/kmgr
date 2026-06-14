@@ -24,7 +24,9 @@ impl Completer for PathHelper {
     }
 }
 
-impl Hinter for PathHelper { type Hint = String; }
+impl Hinter for PathHelper {
+    type Hint = String;
+}
 impl Highlighter for PathHelper {}
 impl Validator for PathHelper {}
 impl Helper for PathHelper {}
@@ -158,7 +160,8 @@ pub async fn do_cmd() -> Result<()> {
 
         let mut val = match rl.readline(&prompt_str) {
             Ok(line) => line.trim().to_string(),
-            Err(rustyline::error::ReadlineError::Interrupted) | Err(rustyline::error::ReadlineError::Eof) => {
+            Err(rustyline::error::ReadlineError::Interrupted)
+            | Err(rustyline::error::ReadlineError::Eof) => {
                 println!("      {} Aborted.", "⚠".yellow());
                 std::process::exit(1);
             }

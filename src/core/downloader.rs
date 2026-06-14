@@ -109,7 +109,8 @@ impl Downloader {
             file.flush().await?;
             success = true;
             Ok(())
-        }.await;
+        }
+        .await;
 
         // If streaming failed, immediately purge the corrupted file
         if !success {

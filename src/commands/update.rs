@@ -49,7 +49,10 @@ pub async fn do_cmd(apply: bool, jobs: usize) -> Result<()> {
                 let mut latest_version = None;
                 let mut update_target = None;
                 if let Ok(provider) = registry_clone.get(&source) {
-                    if let Ok(targets) = provider.resolve(&id_clone, &mc_version, &loader, jobs).await {
+                    if let Ok(targets) = provider
+                        .resolve(&id_clone, &mc_version, &loader, jobs)
+                        .await
+                    {
                         if let Some(target) = targets.into_iter().next() {
                             latest_version = Some(target.version.clone());
                             update_target = Some(target);
