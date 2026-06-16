@@ -1,8 +1,10 @@
+use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "kmgr")]
 #[command(author, version, about = " A fast, lightweight Minecraft CLI Mod Manager written in Rust", long_about = None)]
+#[command(styles = cli_styles())]
 pub struct Cli {
     /// Number of concurrent tasks (downloads/API requests)
     #[arg(short = 'j', long, default_value_t = 10, global = true)]
@@ -124,4 +126,12 @@ pub enum ProfileCommands {
     Delete { name: String },
     /// Rename a profile
     Rename { old_name: String, new_name: String },
+}
+
+fn cli_styles() -> Styles {
+    Styles::styled()
+        .header(AnsiColor::Cyan.on_default() | Effects::BOLD | Effects::UNDERLINE)
+        .usage(AnsiColor::Cyan.on_default() | Effects::BOLD | Effects::UNDERLINE)
+        .literal(AnsiColor::Green.on_default() | Effects::BOLD)
+        .placeholder(AnsiColor::Yellow.on_default())
 }
