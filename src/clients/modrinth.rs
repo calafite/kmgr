@@ -327,10 +327,11 @@ impl ModProvider for ModrinthClient {
             .collect();
 
         if let Some(root_id) = root_project_id
-            && let Some(pos) = targets.iter().position(|t| t.id == root_id) {
-                let root_target = targets.remove(pos);
-                targets.insert(0, root_target);
-            }
+            && let Some(pos) = targets.iter().position(|t| t.id == root_id)
+        {
+            let root_target = targets.remove(pos);
+            targets.insert(0, root_target);
+        }
 
         Ok(targets)
     }
