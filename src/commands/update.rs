@@ -47,10 +47,11 @@ pub async fn do_cmd(apply: bool, jobs: usize) -> Result<()> {
                     && let Ok(targets) = provider
                         .resolve(&id_clone, &mc_version, &loader, jobs)
                         .await
-                        && let Some(target) = targets.into_iter().next() {
-                            latest_version = Some(target.version.clone());
-                            update_target = Some(target);
-                        }
+                    && let Some(target) = targets.into_iter().next()
+                {
+                    latest_version = Some(target.version.clone());
+                    update_target = Some(target);
+                }
                 (id_clone, latest_version, update_target)
             }
         })
@@ -80,45 +81,44 @@ pub async fn do_cmd(apply: bool, jobs: usize) -> Result<()> {
                 println!(" {} {}", "→ v".yellow(), latest.yellow().bold());
                 updates_available += 1;
 
-                if apply
-                    && let Some(target) = update_target {
-                        let dest = state.get_mod_path(&target.filename, mod_info.enabled);
-                        println!(
-                            "      {} Downloading {}...",
-                            "↓".blue(),
-                            target.filename.bright_black()
-                        );
-                        if let Err(e) = downloader
-                            .download_file(&target.download_url, &dest, target.hash.as_deref())
-                            .await
-                        {
-                            eprintln!("        {} Failed: {}", "✗".red(), e);
-                        } else {
-                            println!("        {} Done", "✔".green());
+                if apply && let Some(target) = update_target {
+                    let dest = state.get_mod_path(&target.filename, mod_info.enabled);
+                    println!(
+                        "      {} Downloading {}...",
+                        "↓".blue(),
+                        target.filename.bright_black()
+                    );
+                    if let Err(e) = downloader
+                        .download_file(&target.download_url, &dest, target.hash.as_deref())
+                        .await
+                    {
+                        eprintln!("        {} Failed: {}", "✗".red(), e);
+                    } else {
+                        println!("        {} Done", "✔".green());
 
-                            if target.filename != mod_info.filename {
-                                let old_file_path =
-                                    state.get_mod_path(&mod_info.filename, mod_info.enabled);
-                                let _ = tokio::fs::remove_file(&old_file_path).await;
-                            }
-
-                            state.installed_mods.insert(
-                                id.clone(),
-                                crate::core::state::InstalledMod {
-                                    name: mod_info.name.clone(),
-                                    version: target.version.clone(),
-                                    source: target.source.clone(),
-                                    filename: target.filename.clone(),
-                                    download_url: target.download_url.clone(),
-                                    hash: target.hash.clone(),
-                                    is_explicit: mod_info.is_explicit,
-                                    dependencies: target.dependencies.clone(),
-                                    enabled: mod_info.enabled,
-                                },
-                            );
-                            applied_count += 1;
+                        if target.filename != mod_info.filename {
+                            let old_file_path =
+                                state.get_mod_path(&mod_info.filename, mod_info.enabled);
+                            let _ = tokio::fs::remove_file(&old_file_path).await;
                         }
+
+                        state.installed_mods.insert(
+                            id.clone(),
+                            crate::core::state::InstalledMod {
+                                name: mod_info.name.clone(),
+                                version: target.version.clone(),
+                                source: target.source.clone(),
+                                filename: target.filename.clone(),
+                                download_url: target.download_url.clone(),
+                                hash: target.hash.clone(),
+                                is_explicit: mod_info.is_explicit,
+                                dependencies: target.dependencies.clone(),
+                                enabled: mod_info.enabled,
+                            },
+                        );
+                        applied_count += 1;
                     }
+                }
             } else {
                 println!(" {} {}", "→".bright_black(), "up to date".bright_black());
             }

@@ -185,9 +185,10 @@ pub async fn do_cmd() -> Result<()> {
         }
 
         if val.starts_with("~/")
-            && let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
-                val = val.replacen('~', &home, 1);
-            }
+            && let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE"))
+        {
+            val = val.replacen('~', &home, 1);
+        }
 
         let invalid_chars = ['\0', '*', '?', '"', '<', '>', '|'];
         if val.chars().any(|c| invalid_chars.contains(&c)) {

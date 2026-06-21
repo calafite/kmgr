@@ -91,17 +91,16 @@ pub async fn do_cmd(
 
                         async move {
                             if let Some(ref existing) = existing_mod
-                                && existing.version == target.version {
-                                    let change_to_explicit = is_explicit && !existing.is_explicit;
-                                    return Ok(InstallTaskResult {
-                                        id: target.id.clone(),
-                                        target,
-                                        is_explicit,
-                                        status: InstallStatus::AlreadyInstalled {
-                                            change_to_explicit,
-                                        },
-                                    });
-                                }
+                                && existing.version == target.version
+                            {
+                                let change_to_explicit = is_explicit && !existing.is_explicit;
+                                return Ok(InstallTaskResult {
+                                    id: target.id.clone(),
+                                    target,
+                                    is_explicit,
+                                    status: InstallStatus::AlreadyInstalled { change_to_explicit },
+                                });
+                            }
 
                             downloader.println(&format!(
                                 "    {} Downloading {}",
@@ -179,9 +178,10 @@ pub async fn do_cmd(
                                     existing.is_explicit = true;
                                 }
                                 if let Some(profile) = state.profiles.get_mut(&state.active_profile)
-                                    && !profile.contains(&task_result.id) {
-                                        profile.push(task_result.id.clone());
-                                    }
+                                    && !profile.contains(&task_result.id)
+                                {
+                                    profile.push(task_result.id.clone());
+                                }
                             }
                         }
                         InstallStatus::Downloaded {
@@ -202,9 +202,10 @@ pub async fn do_cmd(
 
                             if task_result.is_explicit
                                 && let Some(profile) = state.profiles.get_mut(&state.active_profile)
-                                    && !profile.contains(&task_result.id) {
-                                        profile.push(task_result.id.clone());
-                                    }
+                                && !profile.contains(&task_result.id)
+                            {
+                                profile.push(task_result.id.clone());
+                            }
 
                             state.installed_mods.insert(task_result.id, installed_mod);
                         }
