@@ -43,17 +43,14 @@ pub async fn do_cmd(apply: bool, jobs: usize) -> Result<()> {
             async move {
                 let mut latest_version = None;
                 let mut update_target = None;
-                if let Ok(provider) = registry_clone.get(&source) {
-                    if let Ok(targets) = provider
+                if let Ok(provider) = registry_clone.get(&source)
+                    && let Ok(targets) = provider
                         .resolve(&id_clone, &mc_version, &loader, jobs)
                         .await
-                    {
-                        if let Some(target) = targets.into_iter().next() {
+                        && let Some(target) = targets.into_iter().next() {
                             latest_version = Some(target.version.clone());
                             update_target = Some(target);
                         }
-                    }
-                }
                 (id_clone, latest_version, update_target)
             }
         })
@@ -83,8 +80,8 @@ pub async fn do_cmd(apply: bool, jobs: usize) -> Result<()> {
                 println!(" {} {}", "→ v".yellow(), latest.yellow().bold());
                 updates_available += 1;
 
-                if apply {
-                    if let Some(target) = update_target {
+                if apply
+                    && let Some(target) = update_target {
                         let dest = state.get_mod_path(&target.filename, mod_info.enabled);
                         println!(
                             "      {} Downloading {}...",
@@ -122,7 +119,6 @@ pub async fn do_cmd(apply: bool, jobs: usize) -> Result<()> {
                             applied_count += 1;
                         }
                     }
-                }
             } else {
                 println!(" {} {}", "→".bright_black(), "up to date".bright_black());
             }

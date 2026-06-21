@@ -87,7 +87,7 @@ impl Downloader {
         let mut stream = response.bytes_stream();
         let mut file = File::create(&part_path).await?;
 
-        let is_sha1 = expected_hash.map_or(false, |h| h.len() == 40);
+        let is_sha1 = expected_hash.is_some_and(|h| h.len() == 40);
         let mut sha1_hasher = (expected_hash.is_some() && is_sha1).then(Sha1::new);
         let mut sha512_hasher = (expected_hash.is_some() && !is_sha1).then(Sha512::new);
 

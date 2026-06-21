@@ -90,8 +90,8 @@ pub async fn do_cmd(
                             .to_string();
 
                         async move {
-                            if let Some(ref existing) = existing_mod {
-                                if existing.version == target.version {
+                            if let Some(ref existing) = existing_mod
+                                && existing.version == target.version {
                                     let change_to_explicit = is_explicit && !existing.is_explicit;
                                     return Ok(InstallTaskResult {
                                         id: target.id.clone(),
@@ -102,7 +102,6 @@ pub async fn do_cmd(
                                         },
                                     });
                                 }
-                            }
 
                             downloader.println(&format!(
                                 "    {} Downloading {}",
@@ -180,11 +179,9 @@ pub async fn do_cmd(
                                     existing.is_explicit = true;
                                 }
                                 if let Some(profile) = state.profiles.get_mut(&state.active_profile)
-                                {
-                                    if !profile.contains(&task_result.id) {
+                                    && !profile.contains(&task_result.id) {
                                         profile.push(task_result.id.clone());
                                     }
-                                }
                             }
                         }
                         InstallStatus::Downloaded {
@@ -203,14 +200,11 @@ pub async fn do_cmd(
                                 let _ = tokio::fs::remove_file(&old_file_path).await;
                             }
 
-                            if task_result.is_explicit {
-                                if let Some(profile) = state.profiles.get_mut(&state.active_profile)
-                                {
-                                    if !profile.contains(&task_result.id) {
+                            if task_result.is_explicit
+                                && let Some(profile) = state.profiles.get_mut(&state.active_profile)
+                                    && !profile.contains(&task_result.id) {
                                         profile.push(task_result.id.clone());
                                     }
-                                }
-                            }
 
                             state.installed_mods.insert(task_result.id, installed_mod);
                         }
